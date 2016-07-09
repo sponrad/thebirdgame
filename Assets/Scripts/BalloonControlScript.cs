@@ -29,11 +29,14 @@ public class BalloonControlScript : MonoBehaviour {
 			Collider2D[] enemies = Physics2D.OverlapCircleAll(transform.position, explosionRadius);
 			for (int i = 0; i < enemies.Length; i++) {
 				if (enemies [i].gameObject.name == "bird(Clone)") {
-					Destroy (enemies [i].gameObject);
+					//Destroy (enemies [i].gameObject);
+					enemies [i].gameObject.GetComponent<BirdControlScript> ().hit (transform.position);
 				}
 			}
 
-			//destroy the baloon
+			Instantiate(coll.gameObject.GetComponent<PlaneControlScript>().balloonPopParticle , new Vector3(transform.position.x, transform.position.y, -2f), Quaternion.identity);
+
+			//destroy the balloon
 			Destroy (this.gameObject);
 		}
 	}

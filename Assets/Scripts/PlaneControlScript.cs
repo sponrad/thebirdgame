@@ -6,9 +6,16 @@ public class PlaneControlScript : MonoBehaviour {
 	public float speed = 8.0f;
 	public float rotationSpeed = 400.0f;
 
+	public GameObject exhaustDash;
+	public GameObject balloonPopParticle;
+
+	private Rigidbody2D rb2d;
+	private Bounds levelBounds;
 
 	// Use this for initialization
 	void Start () {
+		InvokeRepeating ("spawnExhaust", 0.5f, 0.25f);
+		levelBounds = GameObject.Find ("SkySceneControl").GetComponent<SkySceneControl> ().levelBounds;
 	}
 	
 	// Update is called once per frame
@@ -32,6 +39,13 @@ public class PlaneControlScript : MonoBehaviour {
 		}
 
 		transform.position += transform.up * Time.deltaTime * speed;
-	
+		if (!levelBounds.Contains (transform.position)) {
+			transform.position = levelBounds.ClosestPoint (transform.position);
+		}
 	}
+
+	void spawnExhaust(){
+		Instantiate (exhaustDash, transform.position, transform.rotation);
+	}
+		
 }
