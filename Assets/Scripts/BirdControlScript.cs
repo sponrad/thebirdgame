@@ -52,8 +52,10 @@ public class BirdControlScript : MonoBehaviour {
 		if (coll.gameObject.name == "plane") {
 			Debug.Log ("plane collision");
 			//game over
-			int scene = SceneManager.GetActiveScene().buildIndex;
-			SceneManager.LoadScene(scene, LoadSceneMode.Single);		
+			SceneManager.LoadScene("Title");
+			Globals.inGame = false;
+			CancelInvoke ("spawnEnemy");
+			CancelInvoke ("spawnBalloon");
 		}
 	}
 
@@ -84,5 +86,7 @@ public class BirdControlScript : MonoBehaviour {
 		gameObject.GetComponent<Rigidbody2D> ().angularVelocity = Random.Range (100f, 400f) * Mathf.Sign( (float)Random.Range (-1, 1));
 		gameObject.GetComponent<Rigidbody2D> ().AddForce(sourceVector);
 		BirdList.Remove (this);
+
+		Globals.score += 25 * Globals.scoreMultiplier;
 	}
 }

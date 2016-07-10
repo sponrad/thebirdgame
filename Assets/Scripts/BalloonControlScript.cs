@@ -34,6 +34,8 @@ public class BalloonControlScript : MonoBehaviour {
 				}
 			}
 
+			Globals.score += 25 * Globals.scoreMultiplier;
+
 			Instantiate(coll.gameObject.GetComponent<PlaneControlScript>().balloonPopParticle , new Vector3(transform.position.x, transform.position.y, -2f), Quaternion.identity);
 
 			//destroy the balloon

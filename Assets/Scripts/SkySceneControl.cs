@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using UnityEngine.UI;
 
 public class SkySceneControl : MonoBehaviour {
 
@@ -7,6 +8,8 @@ public class SkySceneControl : MonoBehaviour {
 	public GameObject cloud;
 	public GameObject balloon;
 	public GameObject plane;
+	public Text scoreText;
+	public Text scoreMultiplierText;
 
 	public Bounds levelBounds;
 
@@ -23,32 +26,36 @@ public class SkySceneControl : MonoBehaviour {
 			new Vector3(levelBounds.max.x - spawnBuffer, levelBounds.max.y - spawnBuffer, 1f)
 		};
 			
+		Globals.scoreMultiplier = 1;
+		Globals.score = 0;
+		Globals.inGame = true;
+
 		Invoke ("spawnEnemy", Random.Range(0.1f, 1f));
 
 		spawnBalloon ();
+
 	}
 	
 	// Update is called once per frame
 	void Update () {
-		//TODO: spawn a cloud every now and then at the left side of hte screen, moving toward screen
-
-		//follow player
-		//Camera.main.transform.position = new Vector3 (plane.transform.position.x, plane.transform.position.y, Camera.main.transform.position.z);
+		scoreText.text = Globals.score.ToString ();
+		scoreMultiplierText.text = "x " + Globals.scoreMultiplier.ToString ();
 	}
 
 	void spawnEnemy(){
-		Vector3 spawnLocation = spawnLocations[Random.Range(0, spawnLocations.Length)];
-		
-		Instantiate(enemy, spawnLocation, Quaternion.identity);
-
-		Invoke ("spawnEnemy", Random.Range(0.8f, 3f));
+		if (Globals.inGame) {
+			Vector3 spawnLocation = spawnLocations[Random.Range(0, spawnLocations.Length)];
+			Instantiate(enemy, spawnLocation, Quaternion.identity);
+			Invoke ("spawnEnemy", Random.Range (0.8f, 3f));
+		}
 	}
 
 	void spawnBalloon(){
-		Vector3 spawnLocation = new Vector3 (Random.Range (levelBounds.min.x, levelBounds.max.x), Random.Range (levelBounds.min.y, levelBounds.max.y), 1f);
-		Instantiate(balloon, spawnLocation, Quaternion.identity);
-
-		Invoke ("spawnBalloon", Random.Range (2.5f, 5f));
+		if (Globals.inGame) {
+			Vector3 spawnLocation = new Vector3 (Random.Range (levelBounds.min.x, levelBounds.max.x), Random.Range (levelBounds.min.y, levelBounds.max.y), 1f);
+			Instantiate(balloon, spawnLocation, Quaternion.identity);
+			Invoke ("spawnBalloon", Random.Range (2.5f, 5f));
+		}
 	}
 		
 }

@@ -30,10 +30,10 @@ public class PlaneControlScript : MonoBehaviour {
 		}
 
 		if (Input.GetMouseButton (0)) {
-			Debug.Log (Input.mousePosition);
 			if (Input.mousePosition.x < Screen.width / 2f) {
 				transform.Rotate (0, 0, rotationSpeed * Time.deltaTime);
-			} else {
+			} 
+			if (Input.mousePosition.x >= Screen.width / 2f) {
 				transform.Rotate (0, 0, -rotationSpeed * Time.deltaTime);
 			}
 		}
