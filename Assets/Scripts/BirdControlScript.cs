@@ -7,6 +7,7 @@ public class BirdControlScript : MonoBehaviour {
 
 	public float speed = 4.0f;
 	public float rotationSpeed = 1.0f;
+	public float enemyDistanceRadius = 1.5f;
 
 	public static List<BirdControlScript> BirdList = new List<BirdControlScript>();
 
@@ -26,14 +27,14 @@ public class BirdControlScript : MonoBehaviour {
 	void Update () {
 		if (alive) {
 			Vector3 vectorToTarget = player.transform.position - transform.position;
-			float angle = Mathf.Atan2 (vectorToTarget.y, vectorToTarget.x) * Mathf.Rad2Deg - 90;
+			float angle = Mathf.Atan2 (vectorToTarget.y, vectorToTarget.x) * Mathf.Rad2Deg;
 			Quaternion q = Quaternion.AngleAxis (angle, Vector3.forward);
 			transform.rotation = Quaternion.Slerp (transform.rotation, q, Time.deltaTime * rotationSpeed);
 
 			//get a factor for all of the nearby enemies to apply to the position
 			Vector3 v2 = rule2 (this);
 
-			transform.position += (transform.up + v2) * speed * Time.deltaTime;
+			transform.position += (transform.right + v2) * speed * Time.deltaTime;
 			if (!levelBounds.Contains (transform.position)) {
 				transform.position = levelBounds.ClosestPoint (transform.position);
 			}
@@ -41,6 +42,12 @@ public class BirdControlScript : MonoBehaviour {
 
 		if (transform.position.y <= -30) {
 			Destroy (gameObject);
+		}
+
+		if (alive == true && 90f < transform.eulerAngles.z && transform.eulerAngles.z < 269f) {
+			gameObject.GetComponent<SpriteRenderer> ().flipY = true;
+		} else {
+			gameObject.GetComponent<SpriteRenderer> ().flipY = false;
 		}
 	}
 
@@ -54,8 +61,6 @@ public class BirdControlScript : MonoBehaviour {
 			//game over
 			SceneManager.LoadScene("Title");
 			Globals.inGame = false;
-			CancelInvoke ("spawnEnemy");
-			CancelInvoke ("spawnBalloon");
 		}
 	}
 
@@ -69,13 +74,13 @@ public class BirdControlScript : MonoBehaviour {
 
 			float enemyDistance = Vector3.Distance (ej.transform.position, e.transform.position);
 
-			if(e != ej && enemyDistance <= 2f)
+			if(e != ej && enemyDistance <= enemyDistanceRadius)
 			{
 				center = center - (e.transform.position - ej.transform.position);
 			}
 		}
 
-		return center;
+		return center * 0.5f;
 	}
 
 	public void hit(Vector3 sourcePoint){
