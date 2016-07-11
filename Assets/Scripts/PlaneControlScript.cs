@@ -14,7 +14,7 @@ public class PlaneControlScript : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
-		InvokeRepeating ("spawnExhaust", 0.5f, 0.25f);
+		InvokeRepeating ("spawnExhaust", 0f, 0.25f);
 		levelBounds = GameObject.Find ("SkySceneControl").GetComponent<SkySceneControl> ().levelBounds;
 	}
 	

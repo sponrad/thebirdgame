@@ -8,11 +8,12 @@ public class BirdControlScript : MonoBehaviour {
 	public float speed = 4.0f;
 	public float rotationSpeed = 1.0f;
 	public float enemyDistanceRadius = 1.5f;
-
+	public GameObject multiplierObject;
 	public static List<BirdControlScript> BirdList = new List<BirdControlScript>();
 
 	private GameObject player;
-	public bool alive = true;
+	public bool alive = false;
+	private bool birthing = true;
 
 	private Bounds levelBounds;
 
@@ -21,11 +22,23 @@ public class BirdControlScript : MonoBehaviour {
 		player = GameObject.Find ("plane");
 		BirdList.Add (this);
 		levelBounds = GameObject.Find ("SkySceneControl").GetComponent<SkySceneControl> ().levelBounds;
+		gameObject.GetComponent<Collider2D> ().enabled = false;
 	}
 
 	// Update is called once per frame
 	void Update () {
+		if (birthing) {
+			//not able to be hit, spread out from other spawned birds
+			Vector3 v2 = rule2 (this);
+			transform.position += (transform.right + v2) * speed * Time.deltaTime;
+			if (!levelBounds.Contains (transform.position)) {
+				transform.position = levelBounds.ClosestPoint (transform.position);
+			}
+
+			//make size larger each round, until alive and pursuing player
+		}
 		if (alive) {
+			Debug.Log ("ALIVE FIRING");
 			Vector3 vectorToTarget = player.transform.position - transform.position;
 			float angle = Mathf.Atan2 (vectorToTarget.y, vectorToTarget.x) * Mathf.Rad2Deg;
 			Quaternion q = Quaternion.AngleAxis (angle, Vector3.forward);
@@ -93,5 +106,11 @@ public class BirdControlScript : MonoBehaviour {
 		BirdList.Remove (this);
 
 		Globals.score += 25 * Globals.scoreMultiplier;
+
+		spawnMultiplier ();
+	}
+
+	public void spawnMultiplier(){
+		Instantiate (multiplierObject, transform.position, transform.rotation);
 	}
 }
