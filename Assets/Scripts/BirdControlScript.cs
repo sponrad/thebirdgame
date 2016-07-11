@@ -14,6 +14,7 @@ public class BirdControlScript : MonoBehaviour {
 	private GameObject player;
 	public bool alive = false;
 	private bool birthing = true;
+	public float birthTime = 1.5f;
 
 	private Bounds levelBounds;
 
@@ -23,6 +24,8 @@ public class BirdControlScript : MonoBehaviour {
 		BirdList.Add (this);
 		levelBounds = GameObject.Find ("SkySceneControl").GetComponent<SkySceneControl> ().levelBounds;
 		gameObject.GetComponent<Collider2D> ().enabled = false;
+		Invoke ("Born", birthTime);
+		transform.localScale -= new Vector3 (0.1f, 0.1f, 0);
 	}
 
 	// Update is called once per frame
@@ -30,10 +33,7 @@ public class BirdControlScript : MonoBehaviour {
 		if (birthing) {
 			//not able to be hit, spread out from other spawned birds
 			Vector3 v2 = rule2 (this);
-			transform.position += (transform.right + v2) * speed * Time.deltaTime;
-			if (!levelBounds.Contains (transform.position)) {
-				transform.position = levelBounds.ClosestPoint (transform.position);
-			}
+			transform.position += v2 * speed * Time.deltaTime;
 
 			//make size larger each round, until alive and pursuing player
 		}
@@ -112,5 +112,12 @@ public class BirdControlScript : MonoBehaviour {
 
 	public void spawnMultiplier(){
 		Instantiate (multiplierObject, transform.position, transform.rotation);
+	}
+
+	public void Born(){
+		birthing = false;
+		alive = true;
+		gameObject.GetComponent<Collider2D> ().enabled = true;
+		transform.localScale = new Vector3 (0.2f, 0.2f, 0);
 	}
 }
