@@ -30,7 +30,7 @@ public class SkySceneControl : MonoBehaviour {
 		Globals.score = 0;
 		Globals.inGame = true;
 
-		Invoke ("spawnEnemy", Random.Range(0.1f, 1f));
+		Invoke ("spawnEnemy", 1f);
 
 		spawnBalloon ();
 
@@ -51,7 +51,7 @@ public class SkySceneControl : MonoBehaviour {
 				spawnLocation.y += Random.Range (-0.5f, 0.5f);
 				Instantiate (enemy, spawnLocation, Quaternion.identity);
 			}
-			Invoke ("spawnEnemy", 1f);
+			Invoke ("spawnEnemy", 3f);
 		}
 	}
 
