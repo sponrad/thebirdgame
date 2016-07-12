@@ -10,6 +10,7 @@ public class BirdControlScript : MonoBehaviour {
 	public float enemyDistanceRadius = 1.5f;
 	public GameObject multiplierObject;
 	public static List<BirdControlScript> BirdList = new List<BirdControlScript>();
+	public GameObject birdStunParticle;
 
 	private GameObject player;
 	public bool alive = false;
@@ -25,6 +26,7 @@ public class BirdControlScript : MonoBehaviour {
 		levelBounds = GameObject.Find ("SkySceneControl").GetComponent<SkySceneControl> ().levelBounds;
 		Invoke ("Born", birthTime);
 		transform.localScale -= new Vector3 (0.1f, 0.1f, 0);
+		birdStunParticle.GetComponent<ParticleSystem> ().Stop ();
 	}
 
 	// Update is called once per frame
@@ -73,6 +75,8 @@ public class BirdControlScript : MonoBehaviour {
 				//game over
 				SceneManager.LoadScene ("Title");
 				Globals.inGame = false;
+
+				DestroyEverything ();
 			}
 		}
 	}
@@ -84,11 +88,8 @@ public class BirdControlScript : MonoBehaviour {
 		for(int j = 0; j < BirdList.Count; j++)
 		{
 			BirdControlScript e = BirdList[j];
-
 			float enemyDistance = Vector3.Distance (ej.transform.position, e.transform.position);
-
-			if(e != ej && enemyDistance <= enemyDistanceRadius)
-			{
+			if (e != ej && enemyDistance <= enemyDistanceRadius) {
 				center = center - (e.transform.position - ej.transform.position);
 			}
 		}
@@ -96,8 +97,12 @@ public class BirdControlScript : MonoBehaviour {
 		return center * 0.5f;
 	}
 
-	public void hit(Vector3 sourcePoint){
+	public void hit(Vector3? sourcePoint = null){
+		if (sourcePoint == null) {
+			sourcePoint = transform.position;
+		}
 		CancelInvoke ("Born");
+		birdStunParticle.GetComponent<ParticleSystem> ().Play ();
 		alive = false;
 		Vector2 sourceVector = ((Vector2)transform.position - (Vector2)sourcePoint) * 50f;
 		gameObject.GetComponent<Rigidbody2D> ().isKinematic = false;
@@ -120,5 +125,13 @@ public class BirdControlScript : MonoBehaviour {
 		alive = true;
 		gameObject.GetComponent<Collider2D> ().enabled = true;
 		transform.localScale = new Vector3 (0.2f, 0.2f, 0);
+	}
+
+	public void DestroyEverything(){
+		for (int i = 0; i < BirdList.Count; i++) {
+			if (!BirdList [i] == gameObject) {
+				BirdList [i].hit();
+			}
+		}
 	}
 }
