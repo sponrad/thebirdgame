@@ -25,7 +25,7 @@ public class BirdControlScript : MonoBehaviour {
 		BirdList.Add (this);
 		levelBounds = GameObject.Find ("SkySceneControl").GetComponent<SkySceneControl> ().levelBounds;
 		Invoke ("Born", birthTime);
-		transform.localScale -= new Vector3 (0.1f, 0.1f, 0);
+		transform.localScale = new Vector3 (0.2f, 0.2f, 0);
 		birdStunParticle.GetComponent<ParticleSystem> ().Stop ();
 	}
 
@@ -73,10 +73,11 @@ public class BirdControlScript : MonoBehaviour {
 			Debug.Log ("plane collision");
 			if (alive) {
 				//game over
-				SceneManager.LoadScene ("Title");
+				SceneManager.LoadScene ("GameOver", LoadSceneMode.Additive);
 				Globals.inGame = false;
 
 				DestroyEverything ();
+				Time.timeScale = 0;
 			}
 		}
 	}
@@ -124,7 +125,7 @@ public class BirdControlScript : MonoBehaviour {
 		birthing = false;
 		alive = true;
 		gameObject.GetComponent<Collider2D> ().enabled = true;
-		transform.localScale = new Vector3 (0.2f, 0.2f, 0);
+		transform.localScale = new Vector3 (0.5f, 0.5f, 0);
 	}
 
 	public void DestroyEverything(){

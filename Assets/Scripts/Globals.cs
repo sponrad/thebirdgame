@@ -23,4 +23,5 @@ public class Globals : MonoBehaviour
 			GM = this;
 		DontDestroyOnLoad(this);
 	}
+		
 }
