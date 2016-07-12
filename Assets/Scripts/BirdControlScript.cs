@@ -23,7 +23,6 @@ public class BirdControlScript : MonoBehaviour {
 		player = GameObject.Find ("plane");
 		BirdList.Add (this);
 		levelBounds = GameObject.Find ("SkySceneControl").GetComponent<SkySceneControl> ().levelBounds;
-		gameObject.GetComponent<Collider2D> ().enabled = false;
 		Invoke ("Born", birthTime);
 		transform.localScale -= new Vector3 (0.1f, 0.1f, 0);
 	}
@@ -31,14 +30,13 @@ public class BirdControlScript : MonoBehaviour {
 	// Update is called once per frame
 	void Update () {
 		if (birthing) {
-			//not able to be hit, spread out from other spawned birds
+			//can be hit, spread out from other spawned birds
 			Vector3 v2 = rule2 (this);
 			transform.position += v2 * speed * Time.deltaTime;
 
 			//make size larger each round, until alive and pursuing player
 		}
 		if (alive) {
-			Debug.Log ("ALIVE FIRING");
 			Vector3 vectorToTarget = player.transform.position - transform.position;
 			float angle = Mathf.Atan2 (vectorToTarget.y, vectorToTarget.x) * Mathf.Rad2Deg;
 			Quaternion q = Quaternion.AngleAxis (angle, Vector3.forward);
@@ -71,9 +69,11 @@ public class BirdControlScript : MonoBehaviour {
 	void OnTriggerEnter2D(Collider2D coll){
 		if (coll.gameObject.name == "plane") {
 			Debug.Log ("plane collision");
-			//game over
-			SceneManager.LoadScene("Title");
-			Globals.inGame = false;
+			if (alive) {
+				//game over
+				SceneManager.LoadScene ("Title");
+				Globals.inGame = false;
+			}
 		}
 	}
 
@@ -97,6 +97,7 @@ public class BirdControlScript : MonoBehaviour {
 	}
 
 	public void hit(Vector3 sourcePoint){
+		CancelInvoke ("Born");
 		alive = false;
 		Vector2 sourceVector = ((Vector2)transform.position - (Vector2)sourcePoint) * 50f;
 		gameObject.GetComponent<Rigidbody2D> ().isKinematic = false;

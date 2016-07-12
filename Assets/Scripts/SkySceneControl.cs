@@ -44,7 +44,9 @@ public class SkySceneControl : MonoBehaviour {
 
 	void spawnEnemy(){
 		if (Globals.inGame) {
-			int spawnCount = 1 + Mathf.FloorToInt (Globals.scoreMultiplier / 25);
+			int spawnCount = 1 + Mathf.FloorToInt ((Globals.scoreMultiplier - 1) / (3 * Mathf.Log(Globals.scoreMultiplier)));
+			spawnCount = Random.Range (1, spawnCount * 2);
+			Debug.Log (spawnCount);
 			Vector3 spawnLocation = spawnLocations[Random.Range(0, spawnLocations.Length)];
 			for (int i = 0; i < spawnCount; i++) {
 				spawnLocation.x += Random.Range (-0.5f, 0.5f);
