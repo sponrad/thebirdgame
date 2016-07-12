@@ -8,6 +8,7 @@ public class TitleControl : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
+		loadPlayerPrefs ();
 	}
 	
 	// Update is called once per frame
