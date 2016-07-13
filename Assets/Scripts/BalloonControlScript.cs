@@ -23,10 +23,10 @@ public class BalloonControlScript : MonoBehaviour {
 
 	void OnTriggerEnter2D(Collider2D coll){
 		if (coll.gameObject.name == "plane") {
-			Debug.Log ("plane balloon collision");
+			Vector3 colliderPosition = transform.position + (Vector3)gameObject.GetComponent<CircleCollider2D> ().offset;
 
 			//blow up the birds!
-			Collider2D[] enemies = Physics2D.OverlapCircleAll(transform.position, explosionRadius);
+			Collider2D[] enemies = Physics2D.OverlapCircleAll(colliderPosition, explosionRadius);
 			for (int i = 0; i < enemies.Length; i++) {
 				if (enemies [i].gameObject.name == "bird(Clone)") {
 					//Destroy (enemies [i].gameObject);
@@ -36,7 +36,7 @@ public class BalloonControlScript : MonoBehaviour {
 
 			Globals.score += 25 * Globals.scoreMultiplier;
 
-			Instantiate(coll.gameObject.GetComponent<PlaneControlScript>().balloonPopParticle , new Vector3(transform.position.x, transform.position.y, -2f), Quaternion.identity);
+			Instantiate(coll.gameObject.GetComponent<PlaneControlScript>().balloonPopParticle , new Vector3(colliderPosition.x, colliderPosition.y, -2f), Quaternion.identity);
 
 			//destroy the balloon
 			Destroy (this.gameObject);
