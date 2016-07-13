@@ -42,6 +42,12 @@ public class PlaneControlScript : MonoBehaviour {
 		if (!levelBounds.Contains (transform.position)) {
 			transform.position = levelBounds.ClosestPoint (transform.position);
 		}
+
+		if (89f < transform.eulerAngles.z && transform.eulerAngles.z < 269f) {
+			gameObject.GetComponent<SpriteRenderer> ().flipX = true;
+		} else {
+			gameObject.GetComponent<SpriteRenderer> ().flipX = false;
+		}
 	}
 
 	void spawnExhaust(){
