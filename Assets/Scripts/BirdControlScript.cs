@@ -84,14 +84,14 @@ public class BirdControlScript : MonoBehaviour {
 
 	private Vector3 rule2(BirdControlScript ej)
 	{
-		Vector3 center = Vector3.zero;
+		Vector2 center = Vector2.zero;
 
-		for(int j = 0; j < BirdList.Count; j++)
+		for(int j = Random.Range(0,1); j < BirdList.Count; j+=2)
 		{
 			BirdControlScript e = BirdList[j];
-			float enemyDistance = Vector3.Distance (ej.transform.position, e.transform.position);
+			float enemyDistance = Vector2.Distance (ej.transform.position, e.transform.position);
 			if (e != ej && enemyDistance <= enemyDistanceRadius) {
-				center = center - (e.transform.position - ej.transform.position);
+				center = center - (Vector2)(e.transform.position - ej.transform.position);
 			}
 		}
 
