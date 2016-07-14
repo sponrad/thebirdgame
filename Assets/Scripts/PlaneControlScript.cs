@@ -27,6 +27,7 @@ public class PlaneControlScript : MonoBehaviour {
 
 		if (Input.GetKey("right") || Input.GetKey("d")) {
 			transform.Rotate (0, 0, -rotationSpeed * Time.deltaTime);
+			//gameObject.GetComponent<Rigidbody2D> ().angularVelocity = Random.Range (100f, 400f) * Mathf.Sign( (float)Random.Range (-1, 1));
 		}
 
 		if (Input.GetMouseButton (0)) {
