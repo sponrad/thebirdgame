@@ -25,8 +25,8 @@ public class MainCameraControl : MonoBehaviour {
 		} else {
 			Camera.main.orthographicSize = 10f;
 			boundsBuffer = 5f * 15f / 10f;
-			cameraxBounds = levelBounds.extents.y - Camera.main.aspect * Camera.main.orthographicSize;
-			camerayBounds = levelBounds.extents.x - Camera.main.orthographicSize;
+			cameraxBounds = levelBounds.extents.x - Camera.main.aspect * Camera.main.orthographicSize;
+			camerayBounds = levelBounds.extents.y - Camera.main.orthographicSize;
 		}
 	}
 
