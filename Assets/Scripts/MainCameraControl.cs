@@ -18,12 +18,12 @@ public class MainCameraControl : MonoBehaviour {
 		levelBounds = GameObject.Find ("SkySceneControl").GetComponent<SkySceneControl> ().levelBounds;
 		levelBounds.Expand (boundsBuffer);
 		if (Camera.main.pixelHeight > Camera.main.pixelWidth) {
-			Camera.main.orthographicSize = 15f;
+			Camera.main.orthographicSize = 8.5f;
 			boundsBuffer = 5f;
 			cameraxBounds = levelBounds.extents.x - Camera.main.aspect * Camera.main.orthographicSize;
 			camerayBounds = levelBounds.extents.y - Camera.main.orthographicSize;
 		} else {
-			Camera.main.orthographicSize = 10f;
+			Camera.main.orthographicSize = 8.5f;
 			boundsBuffer = 5f * 15f / 10f;
 			cameraxBounds = levelBounds.extents.x - Camera.main.aspect * Camera.main.orthographicSize;
 			camerayBounds = levelBounds.extents.y - Camera.main.orthographicSize;

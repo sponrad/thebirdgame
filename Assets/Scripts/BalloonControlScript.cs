@@ -6,10 +6,14 @@ public class BalloonControlScript : MonoBehaviour {
 	public float explosionRadius = 3f;
 	public float speed = 8f;
 	private Vector3 direction;
+	private Bounds levelBounds;
+
 
 	// Use this for initialization
 	void Start () {
 		direction = transform.up;
+		levelBounds = GameObject.Find ("SkySceneControl").GetComponent<SkySceneControl> ().levelBounds;
+
 	}
 	
 	// Update is called once per frame
@@ -19,6 +23,11 @@ public class BalloonControlScript : MonoBehaviour {
 		direction = new Vector3 (direction.x + x, direction.y + y, 0f);
 
 		transform.position += direction * speed * Time.deltaTime;
+
+		if (!levelBounds.Contains (transform.position)) {
+			transform.position = levelBounds.ClosestPoint (transform.position);
+			direction = new Vector3(0f, 0f, 0f);
+		}
 	}
 
 	void OnTriggerEnter2D(Collider2D coll){

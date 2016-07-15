@@ -61,7 +61,7 @@ public class SkySceneControl : MonoBehaviour {
 		if (Globals.inGame) {
 			Vector3 spawnLocation = new Vector3 (Random.Range (levelBounds.min.x, levelBounds.max.x), Random.Range (levelBounds.min.y, levelBounds.max.y), 1f);
 			Instantiate(balloon, spawnLocation, Quaternion.identity);
-			Invoke ("spawnBalloon", Random.Range (2.5f, 5f));
+			Invoke ("spawnBalloon", Random.Range (2.0f, 4f));
 		}
 	}
 		
