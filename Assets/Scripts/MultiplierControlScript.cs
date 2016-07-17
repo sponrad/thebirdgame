@@ -9,10 +9,13 @@ public class MultiplierControlScript : MonoBehaviour {
 	public Transform target = null;
 	public float speed = 2f;
 
+	private GameObject control;
+
 	// Use this for initialization
 	void Start () {
 		//start to travel in a random direction
 		Invoke("Destroy", lifeTime);
+		control = GameObject.Find ("SkySceneControl");
 	}
 	
 	// Update is called once per frame
@@ -25,6 +28,7 @@ public class MultiplierControlScript : MonoBehaviour {
 
 	void OnTriggerEnter2D(Collider2D coll){
 		if (coll.gameObject.name == "plane") {
+			control.GetComponent<SkySceneControl>().SoundMultiplierPickup ();
 			Globals.scoreMultiplier += 1;
 			Destroy (gameObject);
 		}

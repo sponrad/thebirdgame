@@ -7,13 +7,14 @@ public class BalloonControlScript : MonoBehaviour {
 	public float speed = 8f;
 	private Vector3 direction;
 	private Bounds levelBounds;
+	private GameObject control;
 
 
 	// Use this for initialization
 	void Start () {
 		direction = transform.up;
-		levelBounds = GameObject.Find ("SkySceneControl").GetComponent<SkySceneControl> ().levelBounds;
-
+		control = GameObject.Find ("SkySceneControl");
+		levelBounds = control.GetComponent<SkySceneControl> ().levelBounds;
 	}
 	
 	// Update is called once per frame
@@ -33,6 +34,8 @@ public class BalloonControlScript : MonoBehaviour {
 	void OnTriggerEnter2D(Collider2D coll){
 		if (coll.gameObject.name == "plane") {
 			Vector3 colliderPosition = transform.position + (Vector3)gameObject.GetComponent<CircleCollider2D> ().offset;
+
+			control.GetComponent<SkySceneControl>().SoundBalloonPop ();
 
 			//blow up the birds!
 			Collider2D[] enemies = Physics2D.OverlapCircleAll(colliderPosition, explosionRadius);

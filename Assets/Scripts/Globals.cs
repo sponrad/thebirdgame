@@ -14,14 +14,14 @@ public class Globals : MonoBehaviour
 
 	public static bool inGame = false;
 
+
 	void Awake()
 	{
-
 		if(GM != null)
 			GameObject.Destroy(GM);
 		else
 			GM = this;
 		DontDestroyOnLoad(this);
+
 	}
-		
 }
