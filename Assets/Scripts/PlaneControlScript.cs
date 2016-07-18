@@ -12,10 +12,14 @@ public class PlaneControlScript : MonoBehaviour {
 	private Rigidbody2D rb2d;
 	private Bounds levelBounds;
 
+	private GameObject control;
+
+
 	// Use this for initialization
 	void Start () {
 		InvokeRepeating ("spawnExhaust", 0f, 0.25f);
 		levelBounds = GameObject.Find ("SkySceneControl").GetComponent<SkySceneControl> ().levelBounds;
+		control = GameObject.Find ("SkySceneControl");
 	}
 	
 	// Update is called once per frame
@@ -53,6 +57,14 @@ public class PlaneControlScript : MonoBehaviour {
 
 	void spawnExhaust(){
 		Instantiate (exhaustDash, transform.position, transform.rotation);
+	}
+
+	public void MultiplierSound(){
+		control.GetComponent<SkySceneControl> ().SoundMultiplierPickup ();
+	}
+
+	public void PlaneDeadSound(){
+		control.GetComponent<SkySceneControl>().SoundPlayerDead();
 	}
 		
 }

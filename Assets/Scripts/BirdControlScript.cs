@@ -19,13 +19,9 @@ public class BirdControlScript : MonoBehaviour {
 
 	private Bounds levelBounds;
 
-	private GameObject control;
-
-
 	// Use this for initialization
 	void Start () {
 		player = GameObject.Find ("plane");
-		control = GameObject.Find ("SkySceneControl");
 		BirdList.Add (this);
 		levelBounds = GameObject.Find ("SkySceneControl").GetComponent<SkySceneControl> ().levelBounds;
 		Invoke ("Born", birthTime);
@@ -74,13 +70,12 @@ public class BirdControlScript : MonoBehaviour {
 		
 	void OnTriggerEnter2D(Collider2D coll){
 		if (coll.gameObject.name == "plane") {
-			Debug.Log ("plane collision");
 			if (alive) {
 				//game over
-				control.GetComponent<SkySceneControl>().SoundPlayerDead();
 				SceneManager.LoadScene ("GameOver", LoadSceneMode.Additive);
 				Globals.inGame = false;
 
+				coll.gameObject.GetComponent<PlaneControlScript> ().PlaneDeadSound ();
 				DestroyEverything ();
 				Time.timeScale = 0;
 			}

@@ -54,7 +54,6 @@ public class SkySceneControl : MonoBehaviour {
 
 	void spawnEnemy(){
 		if (Globals.inGame) {
-			SoundEnemySpawn ();
 			int spawnCount = Mathf.FloorToInt ( (Globals.scoreMultiplier - 1) / (4 * Mathf.Log (Globals.scoreMultiplier)) );
 			spawnCount = Random.Range(1, Random.Range (1, spawnCount*2) );
 			Debug.Log (spawnCount);
