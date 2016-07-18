@@ -148,11 +148,11 @@ public class BirdControlScript : MonoBehaviour {
 		for (int i = 0; i < flapBird.Length; i++) {
 			GetComponent<SpriteRenderer> ().sprite = flapBird [i];
 			Debug.Log ("just changed a sprite");
-			yield return new WaitForSeconds (.2f);
+			yield return new WaitForSeconds (.15f);
 		}
 		GetComponent<SpriteRenderer> ().sprite = defaultBirdSprite;
 
-		Invoke ("InitiateFlap", Random.Range(3f,5f));
+		Invoke ("InitiateFlap", Random.Range(1f,4f));
 	}
 
 	public void InitiateFlap(){
