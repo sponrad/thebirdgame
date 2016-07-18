@@ -19,6 +19,10 @@ public class BirdControlScript : MonoBehaviour {
 
 	private Bounds levelBounds;
 
+	private Sprite defaultBirdSprite;
+	public Sprite deadBird;
+	public Sprite[] flapBird;
+
 	// Use this for initialization
 	void Start () {
 		player = GameObject.Find ("plane");
@@ -27,6 +31,7 @@ public class BirdControlScript : MonoBehaviour {
 		Invoke ("Born", birthTime);
 		transform.localScale = new Vector3 (0.2f, 0.2f, 0);
 		birdStunParticle.GetComponent<ParticleSystem> ().Stop ();
+		defaultBirdSprite = gameObject.GetComponent<SpriteRenderer> ().sprite;
 	}
 
 	// Update is called once per frame
@@ -103,6 +108,7 @@ public class BirdControlScript : MonoBehaviour {
 			sourcePoint = transform.position;
 		}
 		CancelInvoke ("Born");
+		GetComponent<SpriteRenderer> ().sprite = deadBird;
 		birdStunParticle.GetComponent<ParticleSystem> ().Play ();
 		alive = false;
 		Vector2 sourceVector = ((Vector2)transform.position - (Vector2)sourcePoint) * 50f;
@@ -126,6 +132,7 @@ public class BirdControlScript : MonoBehaviour {
 		alive = true;
 		gameObject.GetComponent<Collider2D> ().enabled = true;
 		transform.localScale = new Vector3 (0.5f, 0.5f, 0);
+		InitiateFlap ();
 	}
 
 	public void DestroyEverything(){
@@ -134,5 +141,21 @@ public class BirdControlScript : MonoBehaviour {
 				BirdList [i].hit();
 			}
 		}
+	}
+
+	IEnumerator Flap(){
+		//run through flap animations....
+		for (int i = 0; i < flapBird.Length; i++) {
+			GetComponent<SpriteRenderer> ().sprite = flapBird [i];
+			Debug.Log ("just changed a sprite");
+			yield return new WaitForSeconds (.2f);
+		}
+		GetComponent<SpriteRenderer> ().sprite = defaultBirdSprite;
+
+		Invoke ("InitiateFlap", Random.Range(3f,5f));
+	}
+
+	public void InitiateFlap(){
+		StartCoroutine( Flap () );
 	}
 }

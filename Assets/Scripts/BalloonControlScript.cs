@@ -25,7 +25,7 @@ public class BalloonControlScript : MonoBehaviour {
 
 		transform.position += direction * speed * Time.deltaTime;
 
-		if (!levelBounds.Contains (transform.position)) {
+		if (!levelBounds.Contains (transform.position + (Vector3)gameObject.GetComponent<CircleCollider2D> ().offset)) {
 			transform.position = levelBounds.ClosestPoint (transform.position);
 			direction = new Vector3(0f, 0f, 0f);
 		}
