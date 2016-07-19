@@ -35,7 +35,9 @@ public class BalloonControlScript : MonoBehaviour {
 		if (coll.gameObject.name == "plane") {
 			Vector3 colliderPosition = transform.position + (Vector3)gameObject.GetComponent<CircleCollider2D> ().offset;
 
-			control.GetComponent<SkySceneControl>().SoundBalloonPop ();
+			control.GetComponent<SkySceneControl>().SoundBalloonPop();
+
+			bool hitOccured = false;
 
 			//blow up the birds!
 			Collider2D[] enemies = Physics2D.OverlapCircleAll(colliderPosition, explosionRadius);
@@ -43,7 +45,12 @@ public class BalloonControlScript : MonoBehaviour {
 				if (enemies [i].gameObject.name == "bird(Clone)") {
 					//Destroy (enemies [i].gameObject);
 					enemies [i].gameObject.GetComponent<BirdControlScript> ().hit (transform.position);
+					hitOccured = true;
 				}
+			}
+
+			if (hitOccured) {
+				control.GetComponent<SkySceneControl>().DelayBirdSound();
 			}
 
 			Globals.score += 25 * Globals.scoreMultiplier;

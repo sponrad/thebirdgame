@@ -101,5 +101,8 @@ public class SkySceneControl : MonoBehaviour {
 	public void SoundMultiplierPickup(){
 		PlaySound (multiplierPickupSounds [Random.Range (0, multiplierPickupSounds.Length)]);
 	}
-		
+
+	public void DelayBirdSound(){
+		Invoke ("SoundEnemySpawn", 0.25f);
+	}
 }

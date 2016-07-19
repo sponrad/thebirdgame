@@ -10,7 +10,6 @@ public class MultiplierPickupScript : MonoBehaviour {
 
 	void OnTriggerEnter2D(Collider2D coll){
 		if (coll.gameObject.name == "plane") {
-			Debug.Log ("TRIGGER PLANE");
 			transform.parent.GetComponent<MultiplierControlScript>().target = coll.gameObject.transform;
 		}
 	}
