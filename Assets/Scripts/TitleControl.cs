@@ -1,6 +1,9 @@
 ﻿using UnityEngine;
 using System.Collections;
 using UnityEngine.UI;
+using GooglePlayGames;
+using GooglePlayGames.BasicApi;
+using UnityEngine.SocialPlatforms;
 
 public class TitleControl : MonoBehaviour {
 
@@ -9,6 +12,7 @@ public class TitleControl : MonoBehaviour {
 	// Use this for initialization
 	void Start () {
 		loadPlayerPrefs ();
+		startGooglePlay ();
 	}
 	
 	// Update is called once per frame
@@ -51,5 +55,29 @@ public class TitleControl : MonoBehaviour {
 
 		PlayerPrefs.Save ();
 
+	}
+
+	public void startGooglePlay(){
+		PlayGamesClientConfiguration config = new PlayGamesClientConfiguration.Builder ()
+			.Build();
+
+		GooglePlayGames.PlayGamesPlatform.InitializeInstance(config);
+		// recommended for debugging:
+		PlayGamesPlatform.DebugLogEnabled = true;
+		// Activate the Google Play Games platform
+		PlayGamesPlatform.Activate();
+
+		Social.localUser.Authenticate((bool success) => {
+			if (success){
+				Debug.Log("Logged in");
+			}
+			else {
+				Debug.Log("Login Failed");
+			}
+		});
+	}
+
+	public void ShowLeaderboard(){
+		PlayGamesPlatform.Instance.ShowLeaderboardUI (GPGIds.leaderboard_high_score);
 	}
 }

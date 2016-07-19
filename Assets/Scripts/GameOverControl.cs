@@ -1,6 +1,9 @@
 ﻿using UnityEngine;
 using System.Collections;
 using UnityEngine.UI;
+using GooglePlayGames;
+using GooglePlayGames.BasicApi;
+using UnityEngine.SocialPlatforms;
 
 public class GameOverControl : MonoBehaviour {
 
@@ -28,6 +31,10 @@ public class GameOverControl : MonoBehaviour {
 			PlayerPrefs.Save ();
 		}
 
+		Social.ReportScore(Globals.score, GPGIds.leaderboard_high_score, (bool success) => {
+			// handle success or failure
+		});
+
 		Debug.Log (Globals.highScore.ToString ());
 		Debug.Log (PlayerPrefs.GetInt ("highScore"));
 		scoreText.text = "Score: " + Globals.score.ToString();
@@ -37,5 +44,9 @@ public class GameOverControl : MonoBehaviour {
 	// Update is called once per frame
 	void Update () {
 	
+	}
+
+	public void ShowLeaderboard(){
+		PlayGamesPlatform.Instance.ShowLeaderboardUI (GPGIds.leaderboard_high_score);
 	}
 }
