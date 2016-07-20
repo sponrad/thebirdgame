@@ -108,9 +108,11 @@ public class BirdControlScript : MonoBehaviour {
 			sourcePoint = transform.position;
 		}
 		CancelInvoke ("Born");
+		alive = false;
+		GetComponent<SpriteRenderer> ().sortingOrder = 0;
+		GetComponent<SpriteRenderer> ().color = new Color (0.8f, 0.8f, 0.8f, .8f);
 		GetComponent<SpriteRenderer> ().sprite = deadBird;
 		birdStunParticle.GetComponent<ParticleSystem> ().Play ();
-		alive = false;
 		Vector2 sourceVector = ((Vector2)transform.position - (Vector2)sourcePoint) * 50f;
 		gameObject.GetComponent<Rigidbody2D> ().isKinematic = false;
 		gameObject.GetComponent<Collider2D> ().enabled = false;
