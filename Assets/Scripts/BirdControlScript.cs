@@ -144,14 +144,16 @@ public class BirdControlScript : MonoBehaviour {
 	}
 
 	IEnumerator Flap(){
-		//run through flap animations....
-		for (int i = 0; i < flapBird.Length; i++) {
-			GetComponent<SpriteRenderer> ().sprite = flapBird [i];
-			yield return new WaitForSeconds (.1f);
-		}
-		GetComponent<SpriteRenderer> ().sprite = defaultBirdSprite;
+		if (alive) {
+			//run through flap animations....
+			for (int i = 0; i < flapBird.Length; i++) {
+				GetComponent<SpriteRenderer> ().sprite = flapBird [i];
+				yield return new WaitForSeconds (.1f);
+			}
+			GetComponent<SpriteRenderer> ().sprite = defaultBirdSprite;
 
-		Invoke ("InitiateFlap", Random.Range(1f,2f));
+			Invoke ("InitiateFlap", Random.Range(1f,2f));
+		}
 	}
 
 	public void InitiateFlap(){
