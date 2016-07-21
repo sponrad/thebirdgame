@@ -12,7 +12,10 @@ public class TitleControl : MonoBehaviour {
 	// Use this for initialization
 	void Start () {
 		loadPlayerPrefs ();
+
+		#if UNITY_ANDROID
 		startGooglePlay ();
+		#endif
 	}
 	
 	// Update is called once per frame
@@ -67,14 +70,16 @@ public class TitleControl : MonoBehaviour {
 		// Activate the Google Play Games platform
 		PlayGamesPlatform.Activate();
 
-		Social.localUser.Authenticate((bool success) => {
-			if (success){
-				Debug.Log("Logged in");
-			}
-			else {
-				Debug.Log("Login Failed");
-			}
-		});
+		if (!Social.localUser.authenticated) {
+			Social.localUser.Authenticate ((bool success) => {
+				if (success) {
+					Debug.Log ("Logged in");
+				} else {
+					Debug.Log ("Login Failed");
+				}
+			});
+			//silent option }, true);
+		}
 	}
 
 	public void ShowLeaderboard(){
