@@ -1,8 +1,8 @@
 ﻿using UnityEngine;
 using System.Collections;
 using UnityEngine.UI;
-using GooglePlayGames;
-using GooglePlayGames.BasicApi;
+// using GooglePlayGames;
+// using GooglePlayGames.BasicApi;
 using UnityEngine.SocialPlatforms;
 
 public class TitleControl : MonoBehaviour {
@@ -13,9 +13,9 @@ public class TitleControl : MonoBehaviour {
 	void Start () {
 		loadPlayerPrefs ();
 
-		#if UNITY_ANDROID
-		startGooglePlay ();
-		#endif
+		// #if UNITY_ANDROID
+		// startGooglePlay ();
+		// #endif
 	}
 	
 	// Update is called once per frame
@@ -60,29 +60,29 @@ public class TitleControl : MonoBehaviour {
 
 	}
 
-	public void startGooglePlay(){
-		PlayGamesClientConfiguration config = new PlayGamesClientConfiguration.Builder ()
-			.Build();
+	// public void startGooglePlay(){
+	// 	PlayGamesClientConfiguration config = new PlayGamesClientConfiguration.Builder ()
+	// 		.Build();
 
-		GooglePlayGames.PlayGamesPlatform.InitializeInstance(config);
-		// recommended for debugging:
-		PlayGamesPlatform.DebugLogEnabled = true;
-		// Activate the Google Play Games platform
-		PlayGamesPlatform.Activate();
+	// 	GooglePlayGames.PlayGamesPlatform.InitializeInstance(config);
+	// 	// recommended for debugging:
+	// 	PlayGamesPlatform.DebugLogEnabled = true;
+	// 	// Activate the Google Play Games platform
+	// 	PlayGamesPlatform.Activate();
 
-		if (!Social.localUser.authenticated) {
-			Social.localUser.Authenticate ((bool success) => {
-				if (success) {
-					Debug.Log ("Logged in");
-				} else {
-					Debug.Log ("Login Failed");
-				}
-			});
-			//silent option }, true);
-		}
-	}
+	// 	if (!Social.localUser.authenticated) {
+	// 		Social.localUser.Authenticate ((bool success) => {
+	// 			if (success) {
+	// 				Debug.Log ("Logged in");
+	// 			} else {
+	// 				Debug.Log ("Login Failed");
+	// 			}
+	// 		});
+	// 		//silent option }, true);
+	// 	}
+	// }
 
-	public void ShowLeaderboard(){
-		PlayGamesPlatform.Instance.ShowLeaderboardUI (GPGIds.leaderboard_high_score);
-	}
+	// public void ShowLeaderboard(){
+	// 	PlayGamesPlatform.Instance.ShowLeaderboardUI (GPGIds.leaderboard_high_score);
+	// }
 }

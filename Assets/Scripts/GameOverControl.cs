@@ -1,8 +1,8 @@
 ﻿using UnityEngine;
 using System.Collections;
 using UnityEngine.UI;
-using GooglePlayGames;
-using GooglePlayGames.BasicApi;
+// using GooglePlayGames;
+// using GooglePlayGames.BasicApi;
 using UnityEngine.SocialPlatforms;
 
 public class GameOverControl : MonoBehaviour {
@@ -46,7 +46,7 @@ public class GameOverControl : MonoBehaviour {
 	
 	}
 
-	public void ShowLeaderboard(){
-		PlayGamesPlatform.Instance.ShowLeaderboardUI (GPGIds.leaderboard_high_score);
-	}
+	// public void ShowLeaderboard(){
+	// 	PlayGamesPlatform.Instance.ShowLeaderboardUI (GPGIds.leaderboard_high_score);
+	// }
 }
