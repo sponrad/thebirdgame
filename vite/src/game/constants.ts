@@ -42,7 +42,7 @@ export const BALLOON_HITBOX_RADIUS_Y_FACTOR = 0.2;
 
 /** Balloon pop confetti burst */
 export const BALLOON_POP_PARTICLE_DURATION = 1.15;
-export const BALLOON_POP_CONFETTI_COUNT = 128;
+export const BALLOON_POP_CONFETTI_COUNT = 48;
 /** Strong drag so the initial pop dies out fast; speed is derived to reach stun radius. */
 export const BALLOON_POP_CONFETTI_DRAG = 7;
 export const BALLOON_POP_CONFETTI_GRAVITY = 32;

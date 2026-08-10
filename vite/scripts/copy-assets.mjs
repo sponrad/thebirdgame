@@ -2,7 +2,7 @@
 /**
  * Copies Unity assets into vite/public for the web build.
  * Sprites: Assets/Sprites → public/sprites
- * Audio: Assets/Audio → public/audio (.aiff → .ogg when ffmpeg is available)
+ * Audio: Assets/Audio → public/audio (.aiff → .mp3 when ffmpeg is available; Safari needs MP3)
  *
  * Run from vite/: npm run assets
  */
@@ -45,7 +45,7 @@ if (fs.existsSync(spritesSrc)) {
   console.warn('Assets/Sprites not found');
 }
 
-// Audio: copy and convert .aiff → .ogg when ffmpeg is available
+// Audio: copy and convert .aiff → .mp3 when ffmpeg is available (iOS Safari has no Ogg)
 const audioSrc = path.join(repoRoot, 'Assets', 'Audio');
 const audioDest = path.join(publicDir, 'audio');
 ensureDir(audioDest);
@@ -57,7 +57,7 @@ try {
 } catch (_) {}
 
 if (!ffmpegAvailable) {
-  console.warn('ffmpeg not found; .aiff will be copied as-is (browsers may not play it). Install ffmpeg for .ogg conversion.');
+  console.warn('ffmpeg not found; .aiff will be copied as-is (browsers may not play it). Install ffmpeg for .mp3 conversion.');
 }
 
 if (fs.existsSync(audioSrc)) {
@@ -68,8 +68,8 @@ if (fs.existsSync(audioSrc)) {
     const base = path.basename(name, path.extname(name));
     const ext = name.toLowerCase();
     if (ext.endsWith('.aiff') && ffmpegAvailable) {
-      const destOgg = path.join(audioDest, base + '.ogg');
-      execSync(`ffmpeg -y -i "${srcPath}" -acodec libvorbis "${destOgg}"`, { stdio: 'ignore' });
+      const destMp3 = path.join(audioDest, base + '.mp3');
+      execSync(`ffmpeg -y -i "${srcPath}" -codec:a libmp3lame -q:a 4 "${destMp3}"`, { stdio: 'ignore' });
     } else if (ext.endsWith('.aiff')) {
       fs.copyFileSync(srcPath, path.join(audioDest, name));
     } else {

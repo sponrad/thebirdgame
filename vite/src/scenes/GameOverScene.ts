@@ -59,7 +59,7 @@ export class GameOverScene extends Container {
     this.playAgainBtn.anchor.set(0.5);
     this.playAgainBtn.eventMode = 'static';
     this.playAgainBtn.cursor = 'pointer';
-    this.playAgainBtn.on('pointerdown', () => this.onPlayAgain(), this);
+    this.playAgainBtn.on('pointerdown', () => this.onPlayAgain());
     this.addChild(this.playAgainBtn);
 
     this.updateLayout();

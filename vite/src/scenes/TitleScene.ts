@@ -10,6 +10,7 @@ import {
 import type { Application } from 'pixi.js';
 import { Globals } from '../game/Globals';
 import { setSound } from '../utils/storage';
+import { audioManager } from '../audio/AudioManager';
 
 const TITLE_STYLE = new TextStyle({
   fontFamily: 'Arial, Helvetica, sans-serif',
@@ -45,6 +46,14 @@ const SOUND_LABEL_STYLE = new TextStyle({
   fill: 0x1a1a1a,
 });
 
+const TAP_PROMPT_STYLE = new TextStyle({
+  fontFamily: 'Arial, Helvetica, sans-serif',
+  fontSize: 22,
+  fill: 0x1a1a1a,
+  fontWeight: 'bold',
+  stroke: { color: 0xffffff, width: 4 },
+});
+
 function makeButton(
   label: string,
   labelStyle: TextStyle,
@@ -73,11 +82,14 @@ export class TitleScene extends Container {
   private splash!: Sprite;
   private title!: Text;
   private subtitle!: Text;
+  private tapPrompt!: Text;
   private startBtn!: Container;
   private leaderboardBtn!: Container;
   private soundRow!: Container;
   private soundCheckBg!: Graphics;
   private soundCheckMark!: Graphics;
+  private menuReady = false;
+  private priming = false;
 
   private constructor(app: Application, onPlay: () => void) {
     super();
@@ -109,8 +121,12 @@ export class TitleScene extends Container {
     this.subtitle.anchor.set(0.5);
     this.addChild(this.subtitle);
 
+    this.tapPrompt = new Text({ text: 'Tap to continue', style: TAP_PROMPT_STYLE });
+    this.tapPrompt.anchor.set(0.5);
+    this.addChild(this.tapPrompt);
+
     this.startBtn = makeButton('START', START_LABEL_STYLE, 220, 56);
-    this.startBtn.on('pointerdown', () => this.onPlay(), this);
+    this.startBtn.on('pointerdown', () => this.onPlay());
     this.addChild(this.startBtn);
 
     this.leaderboardBtn = makeButton('Leaderboard', SECONDARY_LABEL_STYLE, 180, 42);
@@ -135,6 +151,54 @@ export class TitleScene extends Container {
 
     this.redrawSoundCheck();
     this.updateLayout();
+
+    // Desktop may already be primed after init; mobile needs a gesture first.
+    if (audioManager.isReady()) {
+      this.showMenu();
+    } else {
+      this.showTapToEnable();
+    }
+  }
+
+  private showTapToEnable(): void {
+    this.menuReady = false;
+    this.startBtn.visible = false;
+    this.leaderboardBtn.visible = false;
+    this.soundRow.visible = false;
+    this.tapPrompt.visible = true;
+    this.tapPrompt.text = 'Tap to continue';
+
+    this.eventMode = 'static';
+    this.cursor = 'pointer';
+    this.on('pointerdown', this.onFirstTap, this);
+  }
+
+  private onFirstTap = (): void => {
+    if (this.menuReady || this.priming) return;
+    this.priming = true;
+    this.off('pointerdown', this.onFirstTap, this);
+    this.cursor = 'default';
+    this.tapPrompt.text = 'Loading…';
+
+    void (async () => {
+      try {
+        await audioManager.whenReady();
+      } finally {
+        this.priming = false;
+        this.showMenu();
+      }
+    })();
+  };
+
+  private showMenu(): void {
+    this.menuReady = true;
+    this.eventMode = 'passive';
+    this.cursor = 'default';
+    this.tapPrompt.visible = false;
+    this.startBtn.visible = true;
+    this.leaderboardBtn.visible = true;
+    this.soundRow.visible = true;
+    this.updateLayout();
   }
 
   private redrawSoundCheck(): void {
@@ -152,6 +216,7 @@ export class TitleScene extends Container {
   }
 
   private toggleSound(): void {
+    void audioManager.whenReady();
     Globals.sound = !Globals.sound;
     setSound(Globals.sound);
     this.redrawSoundCheck();
@@ -160,6 +225,8 @@ export class TitleScene extends Container {
   updateLayout(): void {
     const w = this.app.screen.width;
     const h = this.app.screen.height;
+
+    this.hitArea = this.app.screen;
 
     this.clipMask.clear();
     this.clipMask.rect(0, 0, w, h).fill({ color: 0xffffff });
@@ -178,8 +245,12 @@ export class TitleScene extends Container {
     this.subtitle.x = w / 2;
     this.subtitle.y = this.title.y + 34 * this.title.scale.y;
 
+    const menuY = this.subtitle.y + 70;
+    this.tapPrompt.x = w / 2;
+    this.tapPrompt.y = menuY;
+
     this.startBtn.x = w / 2;
-    this.startBtn.y = this.subtitle.y + 70;
+    this.startBtn.y = menuY;
 
     this.leaderboardBtn.x = w / 2;
     this.leaderboardBtn.y = this.startBtn.y + 58;

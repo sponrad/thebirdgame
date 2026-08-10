@@ -18,7 +18,7 @@ npm run assets
 ```
 
 - **Sprites**: copies `../Assets/Sprites/` → `public/sprites/`
-- **Audio**: copies `../Assets/Audio/`; if **ffmpeg** is installed, converts `.aiff` → `.ogg` into `public/audio/`. If not, `.aiff` files are copied as-is (many browsers don’t play .aiff; install ffmpeg and re-run for .ogg).
+- **Audio**: copies `../Assets/Audio/`; if **ffmpeg** is installed, converts `.aiff` → `.mp3` into `public/audio/` (MP3 for iOS Safari). If not, `.aiff` files are copied as-is (browsers don’t play .aiff; install ffmpeg and re-run for .mp3).
 
 Run this once after clone, or whenever Unity assets change. The Unity `Assets/` folder remains the source of truth.
 

@@ -425,6 +425,8 @@ export class SkyScene extends Container {
     const dt = this.app.ticker.deltaMS / 1000;
     if (!Globals.inGame) return;
 
+    audioManager.beginFrame();
+
     this.prevPlaneX = this.plane.x;
     this.prevPlaneY = this.plane.y;
     this.plane.update(dt);
@@ -530,7 +532,6 @@ export class SkyScene extends Container {
         }
       }
       if (hitBalloon) {
-        audioManager.playBalloonPop();
         Globals.score += 25 * Globals.scoreMultiplier;
         const explosionRadius = this.getBalloonExplosionRadius(b);
         const blastX = bx;
@@ -552,6 +553,7 @@ export class SkyScene extends Container {
         this.balloonLayer.removeChild(b);
         b.destroy();
         this.balloons.splice(i, 1);
+        audioManager.playBalloonPop();
       }
     }
 

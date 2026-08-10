@@ -1,6 +1,6 @@
 /**
  * Logical audio keys and their source files (without extension).
- * Files live in public/audio as .ogg (from Assets/Audio .aiff, converted by copy-assets script).
+ * Files live in public/audio as .mp3 (from Assets/Audio .aiff, converted by copy-assets script).
  */
 
 export const BALLOON_SPAWN_FILES = ['balloonrub01', 'balloonrub02', 'balloonrub03', 'balloonrub04', 'balloonrub05'];
