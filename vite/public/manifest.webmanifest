@@ -2,7 +2,7 @@
   "name": "The Bird Game",
   "short_name": "Bird Game",
   "display": "standalone",
-  "orientation": "landscape",
+  "orientation": "any",
   "background_color": "#87ceeb",
   "theme_color": "#87ceeb",
   "start_url": "/",

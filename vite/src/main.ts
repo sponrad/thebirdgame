@@ -1,7 +1,7 @@
 import { Application } from 'pixi.js';
 import { Globals, resetForNewGame } from './game/Globals';
 import { getSound, getHighScore, setHighScore } from './utils/storage';
-import { setupLandscapeLock } from './utils/landscape';
+import { setupMobileChrome } from './utils/landscape';
 import { audioManager } from './audio/AudioManager';
 import { TitleScene } from './scenes/TitleScene';
 import { GameOverScene } from './scenes/GameOverScene';
@@ -10,7 +10,7 @@ import { SkyScene } from './scenes/SkyScene';
 type Scene = TitleScene | GameOverScene | SkyScene;
 
 async function init(): Promise<void> {
-  setupLandscapeLock();
+  setupMobileChrome();
 
   Globals.sound = getSound();
   Globals.highScore = getHighScore();

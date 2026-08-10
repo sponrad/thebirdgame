@@ -1,10 +1,4 @@
-/** Landscape preference, fullscreen attempt, and portrait rotate overlay. */
-
-function isPortrait(): boolean {
-  if (window.matchMedia?.('(orientation: portrait)').matches) return true;
-  if (window.matchMedia?.('(orientation: landscape)').matches) return false;
-  return window.innerHeight > window.innerWidth;
-}
+/** Mobile fullscreen nudge on first gesture (orientation is free). */
 
 function isCoarsePointerMobile(): boolean {
   if (window.matchMedia?.('(pointer: coarse)').matches) return true;
@@ -33,38 +27,13 @@ async function tryFullscreen(): Promise<void> {
   }
 }
 
-async function tryLandscapeLock(): Promise<void> {
-  const orientation = screen.orientation as ScreenOrientation & {
-    lock?: (mode: string) => Promise<void>;
-  };
-  if (typeof orientation?.lock !== 'function') return;
-  try {
-    await orientation.lock('landscape');
-  } catch {
-    // Requires fullscreen / PWA on many browsers.
-  }
-}
-
-export function setupLandscapeLock(): void {
-  const overlay = document.getElementById('rotate-overlay');
-
-  const syncOverlay = (): void => {
-    if (!overlay) return;
-    const show = isCoarsePointerMobile() && isPortrait();
-    overlay.classList.toggle('visible', show);
-  };
-
-  syncOverlay();
-  window.addEventListener('resize', syncOverlay);
-  window.addEventListener('orientationchange', syncOverlay);
-  screen.orientation?.addEventListener?.('change', syncOverlay);
-
+/** Optional fullscreen on first tap; portrait and landscape both allowed. */
+export function setupMobileChrome(): void {
   const onFirstGesture = (): void => {
     void (async () => {
       if (isCoarsePointerMobile() && !isStandaloneDisplay()) {
         await tryFullscreen();
       }
-      await tryLandscapeLock();
       // Nudge mobile browser chrome to collapse when possible.
       window.scrollTo(0, 1);
     })();

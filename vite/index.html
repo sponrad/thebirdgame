@@ -9,7 +9,6 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="screen-orientation" content="landscape" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <title>The Bird Game</title>
     <style>
@@ -37,53 +36,6 @@
         touch-action: none;
         -webkit-user-select: none;
         user-select: none;
-      }
-
-      /* Block portrait play — browsers can't hard-lock orientation on all mobile browsers. */
-      #rotate-overlay {
-        display: none;
-        position: fixed;
-        inset: 0;
-        z-index: 9999;
-        background: #87ceeb;
-        color: #1a1a1a;
-        font-family: Arial, Helvetica, sans-serif;
-        align-items: center;
-        justify-content: center;
-        flex-direction: column;
-        gap: 16px;
-        text-align: center;
-        padding: 24px;
-        -webkit-user-select: none;
-        user-select: none;
-      }
-      #rotate-overlay.visible { display: flex; }
-      #rotate-overlay .phone {
-        width: 52px;
-        height: 88px;
-        border: 3px solid #1a1a1a;
-        border-radius: 8px;
-        position: relative;
-        animation: tilt-landscape 1.6s ease-in-out infinite;
-      }
-      #rotate-overlay .phone::after {
-        content: '';
-        position: absolute;
-        top: 8px;
-        left: 50%;
-        width: 16px;
-        height: 3px;
-        margin-left: -8px;
-        background: #1a1a1a;
-        border-radius: 2px;
-      }
-      #rotate-overlay p {
-        font-size: 20px;
-        font-weight: bold;
-      }
-      @keyframes tilt-landscape {
-        0%, 100% { transform: rotate(0deg); }
-        40%, 60% { transform: rotate(90deg); }
       }
 
       #boot-loader {
@@ -128,11 +80,6 @@
       <p>Loading…</p>
     </div>
     <canvas id="game"></canvas>
-    <div id="rotate-overlay" aria-live="polite">
-      <div class="phone" aria-hidden="true"></div>
-      <p>Rotate your device</p>
-      <span>Landscape mode required</span>
-    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
