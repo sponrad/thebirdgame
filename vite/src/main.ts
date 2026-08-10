@@ -98,6 +98,25 @@ async function init(): Promise<void> {
     if (titleScene.parent) titleScene.updateLayout();
     if (gameOverScene.parent) gameOverScene.updateLayout();
   });
+
+  hideBootLoader();
 }
 
-init().catch(console.error);
+function hideBootLoader(): void {
+  const loader = document.getElementById('boot-loader');
+  if (!loader) return;
+  loader.classList.add('hidden');
+  loader.setAttribute('aria-busy', 'false');
+  window.setTimeout(() => loader.remove(), 400);
+}
+
+init().catch((err) => {
+  console.error(err);
+  const loader = document.getElementById('boot-loader');
+  if (loader) {
+    const label = loader.querySelector('p');
+    if (label) label.textContent = 'Failed to load';
+    const spinner = loader.querySelector('.spinner');
+    if (spinner) (spinner as HTMLElement).style.animation = 'none';
+  }
+});

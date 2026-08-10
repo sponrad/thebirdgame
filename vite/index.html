@@ -85,9 +85,48 @@
         0%, 100% { transform: rotate(0deg); }
         40%, 60% { transform: rotate(90deg); }
       }
+
+      #boot-loader {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        background: #87ceeb;
+        color: #1a1a1a;
+        font-family: Arial, Helvetica, sans-serif;
+        transition: opacity 0.35s ease;
+      }
+      #boot-loader.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #boot-loader .spinner {
+        width: 42px;
+        height: 42px;
+        border: 3px solid rgba(26, 26, 26, 0.2);
+        border-top-color: #1a1a1a;
+        border-radius: 50%;
+        animation: boot-spin 0.8s linear infinite;
+      }
+      #boot-loader p {
+        font-size: 18px;
+        font-weight: bold;
+        letter-spacing: 0.04em;
+      }
+      @keyframes boot-spin {
+        to { transform: rotate(360deg); }
+      }
     </style>
   </head>
   <body>
+    <div id="boot-loader" aria-live="polite" aria-busy="true">
+      <div class="spinner" aria-hidden="true"></div>
+      <p>Loading…</p>
+    </div>
     <canvas id="game"></canvas>
     <div id="rotate-overlay" aria-live="polite">
       <div class="phone" aria-hidden="true"></div>
