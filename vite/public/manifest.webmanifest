@@ -1,0 +1,16 @@
+{
+  "name": "The Bird Game",
+  "short_name": "Bird Game",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#87ceeb",
+  "theme_color": "#87ceeb",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "/sprites/icon-swooping-bird.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    }
+  ]
+}
