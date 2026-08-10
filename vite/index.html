@@ -13,9 +13,31 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <title>The Bird Game</title>
     <style>
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      html, body { width: 100%; height: 100%; overflow: hidden; background: #87ceeb; touch-action: none; }
-      #game { display: block; width: 100%; height: 100%; }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #87ceeb;
+        touch-action: none;
+        overscroll-behavior: none;
+      }
+      #game {
+        display: block;
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
+      }
 
       /* Block portrait play — browsers can't hard-lock orientation on all mobile browsers. */
       #rotate-overlay {
@@ -32,6 +54,8 @@
         gap: 16px;
         text-align: center;
         padding: 24px;
+        -webkit-user-select: none;
+        user-select: none;
       }
       #rotate-overlay.visible { display: flex; }
       #rotate-overlay .phone {

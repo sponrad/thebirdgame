@@ -22,7 +22,21 @@ async function init(): Promise<void> {
     resizeTo: window,
     backgroundColor: 0x87ceeb,
     antialias: true,
+    autoDensity: true,
+    resolution: Math.min(window.devicePixelRatio || 1, 2),
   });
+
+  // Kill browser text-selection / callout gestures on the game canvas.
+  const canvas = app.canvas;
+  canvas.style.touchAction = 'none';
+  canvas.style.userSelect = 'none';
+  (canvas.style as CSSStyleDeclaration & { webkitUserSelect?: string }).webkitUserSelect = 'none';
+  const blockGesture = (e: Event): void => {
+    e.preventDefault();
+  };
+  canvas.addEventListener('selectstart', blockGesture);
+  canvas.addEventListener('gesturestart', blockGesture);
+  canvas.addEventListener('contextmenu', blockGesture);
 
   await audioManager.init();
 
