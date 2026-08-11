@@ -12,7 +12,7 @@ import { Globals } from '../game/Globals';
 import { Plane } from '../game/Plane';
 import { Exhaust } from '../game/Exhaust';
 import { Balloon } from '../game/Balloon';
-import { BalloonPopParticle } from '../game/BalloonPopParticle';
+import { ConfettiSystem } from '../game/ConfettiSystem';
 import { audioManager } from '../audio/AudioManager';
 import {
   LEVEL_BOUNDS,
@@ -61,7 +61,7 @@ export class SkyScene extends Container {
   private balloonLayer!: Container;
   private birdLayer!: Container;
   private multiplierLayer!: Container;
-  private particleLayer!: Container;
+  private confetti!: ConfettiSystem;
   private plane!: Plane;
   private clouds: CloudBackground[] = [];
   private exhausts: Exhaust[] = [];
@@ -72,7 +72,6 @@ export class SkyScene extends Container {
   private birds: Bird[] = [];
   private birdSpawnAccum = 0;
   private multipliers: MultiplierPickup[] = [];
-  private particles: BalloonPopParticle[] = [];
   private balloonTexture!: Texture;
   private birdFlapTextures: Texture[] = [];
   private birdDeadTexture!: Texture;
@@ -160,8 +159,8 @@ export class SkyScene extends Container {
     this.multiplierLayer = new Container();
     this.worldContainer.addChild(this.multiplierLayer);
 
-    this.particleLayer = new Container();
-    this.worldContainer.addChild(this.particleLayer);
+    this.confetti = new ConfettiSystem();
+    this.worldContainer.addChild(this.confetti.view);
 
     this.debugOverlay = new Graphics();
     this.addChild(this.debugOverlay);
@@ -204,11 +203,7 @@ export class SkyScene extends Container {
       m.destroy();
     }
     this.multipliers.length = 0;
-    for (const p of this.particles) {
-      this.particleLayer.removeChild(p);
-      p.destroy();
-    }
-    this.particles.length = 0;
+    this.confetti.clear();
     for (const e of this.exhausts) {
       this.exhaustLayer.removeChild(e);
       e.destroy();
@@ -547,9 +542,7 @@ export class SkyScene extends Container {
           }
         }
         if (anyBirdHit) setTimeout(() => audioManager.playEnemySpawn(), 250);
-        const particle = new BalloonPopParticle(blastX, blastY, now, explosionRadius);
-        this.particleLayer.addChild(particle);
-        this.particles.push(particle);
+        this.confetti.burst(blastX, blastY, explosionRadius);
         this.balloonLayer.removeChild(b);
         b.destroy();
         this.balloons.splice(i, 1);
@@ -589,13 +582,7 @@ export class SkyScene extends Container {
       this.balloons.push(balloon);
     }
 
-    for (let i = this.particles.length - 1; i >= 0; i--) {
-      if (this.particles[i].update(dt)) {
-        this.particleLayer.removeChild(this.particles[i]);
-        this.particles[i].destroy();
-        this.particles.splice(i, 1);
-      }
-    }
+    this.confetti.update(dt);
 
     this.drawCollisionDebug();
 
