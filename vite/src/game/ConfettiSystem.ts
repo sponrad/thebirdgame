@@ -29,12 +29,14 @@ type Bit = {
 
 /**
  * GPU-batched confetti via Pixi v8 ParticleContainer.
- * Particles are pooled; gameplay never constructs sprites on pop.
+ * All particles stay in the container for the scene lifetime (alpha 0 when idle)
+ * so the first pop doesn't pay addParticle/buffer-grow cost.
  */
 export class ConfettiSystem {
   readonly view: ParticleContainer;
   private free: Bit[] = [];
   private live: Bit[] = [];
+  private warmed = false;
 
   constructor() {
     this.view = new ParticleContainer({
@@ -42,14 +44,18 @@ export class ConfettiSystem {
       dynamicProperties: {
         position: true,
         rotation: true,
-        color: true, // alpha fade
-        vertex: true, // scale shrink
+        color: true,
+        vertex: true,
       },
     });
 
     for (let i = 0; i < POOL_SIZE; i++) {
-      this.free.push(this.makeBit());
+      const bit = this.makeBit();
+      // Resident in the GPU buffer from the start.
+      this.view.addParticle(bit.particle);
+      this.free.push(bit);
     }
+    this.view.update();
   }
 
   private makeBit(): Bit {
@@ -57,6 +63,10 @@ export class ConfettiSystem {
       texture: Texture.WHITE,
       anchorX: 0.5,
       anchorY: 0.5,
+      x: 0,
+      y: 0,
+      scaleX: 0.01,
+      scaleY: 0.01,
       alpha: 0,
     });
     return {
@@ -71,13 +81,53 @@ export class ConfettiSystem {
     };
   }
 
+  /**
+   * Upload a one-frame “flash” through the particle pipeline so the first
+   * real burst doesn’t compile shaders / grow buffers mid-game.
+   * Call once after the container is on-stage.
+   */
+  warm(): void {
+    if (this.warmed) return;
+    this.warmed = true;
+
+    // Briefly activate a full burst-worth at alpha 0 so dynamic attrs get a real upload.
+    const n = Math.min(BALLOON_POP_CONFETTI_COUNT, this.free.length);
+    const warmed: Bit[] = [];
+    for (let i = 0; i < n; i++) {
+      const bit = this.free.pop()!;
+      const p = bit.particle;
+      p.x = 0;
+      p.y = 0;
+      p.scaleX = 0.2;
+      p.scaleY = 0.2;
+      p.rotation = 0;
+      p.tint = CONFETTI_COLORS[i % CONFETTI_COLORS.length]!;
+      p.alpha = 0; // invisible, but path is exercised
+      warmed.push(bit);
+      this.live.push(bit);
+    }
+    this.view.update();
+
+    // Return to idle immediately — buffer stays sized for a full burst.
+    for (const bit of warmed) {
+      bit.particle.alpha = 0;
+      bit.particle.scaleX = 0.01;
+      bit.particle.scaleY = 0.01;
+      this.free.push(bit);
+    }
+    this.live.length = 0;
+    this.view.update();
+  }
+
   /** Spawn a burst at world position (balloon bulb). */
   burst(x: number, y: number, radius: number): void {
+    if (!this.warmed) this.warm();
+
     const stunR = Math.max(1, radius);
-    let spawned = 0;
 
     for (let i = 0; i < BALLOON_POP_CONFETTI_COUNT; i++) {
-      const bit = this.free.pop() ?? this.makeBit();
+      const bit = this.free.pop();
+      if (!bit) break; // pool exhausted — skip rather than allocate mid-frame
       const p = bit.particle;
 
       const w = 0.22 + Math.random() * 0.45;
@@ -105,14 +155,7 @@ export class ConfettiSystem {
       bit.life = 0;
       bit.maxLife = BALLOON_POP_PARTICLE_DURATION * (0.65 + Math.random() * 0.45);
 
-      this.view.addParticle(p);
       this.live.push(bit);
-      spawned++;
-    }
-
-    if (spawned > 0) {
-      // Membership / static upload after batch add.
-      this.view.update();
     }
   }
 
@@ -122,17 +165,16 @@ export class ConfettiSystem {
     const damp = Math.exp(-BALLOON_POP_CONFETTI_DRAG * dt);
     const grav = BALLOON_POP_CONFETTI_GRAVITY * dt;
     let write = 0;
-    let removed = false;
 
     for (let i = 0; i < this.live.length; i++) {
       const bit = this.live[i]!;
       bit.life += dt;
 
       if (bit.life >= bit.maxLife) {
-        this.view.removeParticle(bit.particle);
         bit.particle.alpha = 0;
+        bit.particle.scaleX = 0.01;
+        bit.particle.scaleY = 0.01;
         this.free.push(bit);
-        removed = true;
         continue;
       }
 
@@ -155,17 +197,16 @@ export class ConfettiSystem {
     }
 
     this.live.length = write;
-    if (removed) this.view.update();
   }
 
   clear(): void {
     for (const bit of this.live) {
-      this.view.removeParticle(bit.particle);
       bit.particle.alpha = 0;
+      bit.particle.scaleX = 0.01;
+      bit.particle.scaleY = 0.01;
       this.free.push(bit);
     }
     this.live.length = 0;
-    this.view.update();
   }
 
   destroy(): void {

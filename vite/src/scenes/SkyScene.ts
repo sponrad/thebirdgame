@@ -161,6 +161,8 @@ export class SkyScene extends Container {
 
     this.confetti = new ConfettiSystem();
     this.worldContainer.addChild(this.confetti.view);
+    // Warm GPU particle path during boot (before first in-game pop).
+    this.confetti.warm();
 
     this.debugOverlay = new Graphics();
     this.addChild(this.debugOverlay);
