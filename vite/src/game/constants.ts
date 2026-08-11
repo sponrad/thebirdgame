@@ -20,9 +20,18 @@ export const EXHAUST_SPAWN_INTERVAL = 0.25;
 export const EXHAUST_LIFETIME = 1.5;
 export const EXHAUST_SCALE = 0.032;
 
-/** Camera: Unity-style follow with damp; vertical half-extent of the view in world units. */
+/** Camera: Unity-style follow with damp.
+ *  Desktop: zoom from screen height (~2× extent world units tall).
+ *  Mobile: zoom from the longer axis so portrait/landscape keep similar plane size. */
 export const CAMERA_DAMP_TIME = 0.15;
-export const CAMERA_VIEW_HALF_HEIGHT = 20;
+export const CAMERA_VIEW_HALF_EXTENT = 20;
+/**
+ * Mobile-only scale factor on top of longer-axis zoom.
+ * <1 zooms out a bit (see more world); >1 zooms in.
+ */
+export const CAMERA_MOBILE_ZOOM = 0.45;
+/** @deprecated Use CAMERA_VIEW_HALF_EXTENT */
+export const CAMERA_VIEW_HALF_HEIGHT = CAMERA_VIEW_HALF_EXTENT;
 /** Keep level border / view inset from the window edges when camera is clamped. */
 export const VIEW_PADDING_PX = 29;
 

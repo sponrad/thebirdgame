@@ -2,7 +2,7 @@
 
 import { audioManager } from '../audio/AudioManager';
 
-function isCoarsePointerMobile(): boolean {
+export function isCoarsePointerMobile(): boolean {
   if (window.matchMedia?.('(pointer: coarse)').matches) return true;
   return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }

@@ -32,7 +32,8 @@ import {
   BALLOON_SCALE,
   MULTIPLIER_ATTRACT_EXPLOSION_FACTOR,
   CAMERA_DAMP_TIME,
-  CAMERA_VIEW_HALF_HEIGHT,
+  CAMERA_VIEW_HALF_EXTENT,
+  CAMERA_MOBILE_ZOOM,
   VIEW_PADDING_PX,
   PLANE_BIRD_COLLISION_INSET,
 } from '../game/constants';
@@ -40,6 +41,7 @@ import { Bird } from '../game/Bird';
 import { MultiplierPickup } from '../game/MultiplierPickup';
 import { createLevelBorder } from '../game/LevelBorder';
 import { CloudBackground } from '../game/Cloud';
+import { isCoarsePointerMobile } from '../utils/landscape';
 import {
   getSpriteOutlineWorldPoints,
   pixelPerfectOverlap,
@@ -358,11 +360,16 @@ export class SkyScene extends Container {
     const pad = VIEW_PADDING_PX;
     const usableW = Math.max(1, sw - pad * 2);
     const usableH = Math.max(1, sh - pad * 2);
-    const scale = usableH / (CAMERA_VIEW_HALF_HEIGHT * 2);
+    // Desktop: height-based zoom (original feel on wide monitors).
+    // Mobile: longer-axis zoom so landscape isn't tiny vs portrait.
+    const mobile = isCoarsePointerMobile();
+    const refPx = mobile ? Math.max(usableW, usableH) : usableH;
+    const scale =
+      (refPx / (CAMERA_VIEW_HALF_EXTENT * 2)) * (mobile ? CAMERA_MOBILE_ZOOM : 1);
     this.worldContainer.scale.set(scale);
 
     const viewHalfW = usableW / (2 * scale);
-    const viewHalfH = CAMERA_VIEW_HALF_HEIGHT;
+    const viewHalfH = usableH / (2 * scale);
 
     let minCamX = LEVEL_BOUNDS.minX + viewHalfW;
     let maxCamX = LEVEL_BOUNDS.maxX - viewHalfW;
