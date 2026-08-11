@@ -11,6 +11,7 @@ import type { Application } from 'pixi.js';
 import { Globals } from '../game/Globals';
 import { setSound } from '../utils/storage';
 import { audioManager } from '../audio/AudioManager';
+import { canFullscreen, isFullscreen, toggleFullscreen, needsHomeScreenFullscreen } from '../utils/landscape';
 
 const TITLE_STYLE = new TextStyle({
   fontFamily: 'Arial, Helvetica, sans-serif',
@@ -54,6 +55,16 @@ const TAP_PROMPT_STYLE = new TextStyle({
   stroke: { color: 0xffffff, width: 4 },
 });
 
+const TIP_STYLE = new TextStyle({
+  fontFamily: 'Arial, Helvetica, sans-serif',
+  fontSize: 14,
+  fill: 0x1a1a1a,
+  align: 'center',
+  wordWrap: true,
+  wordWrapWidth: 280,
+  stroke: { color: 0xffffff, width: 3 },
+});
+
 function makeButton(
   label: string,
   labelStyle: TextStyle,
@@ -85,6 +96,8 @@ export class TitleScene extends Container {
   private tapPrompt!: Text;
   private startBtn!: Container;
   private leaderboardBtn!: Container;
+  private fullscreenBtn!: Container | null;
+  private installTip!: Text;
   private soundRow!: Container;
   private soundCheckBg!: Graphics;
   private soundCheckMark!: Graphics;
@@ -133,6 +146,38 @@ export class TitleScene extends Container {
     this.leaderboardBtn.alpha = 0.85;
     this.addChild(this.leaderboardBtn);
 
+    this.fullscreenBtn = null;
+    if (canFullscreen()) {
+      this.fullscreenBtn = makeButton('Fullscreen', SECONDARY_LABEL_STYLE, 180, 42);
+      this.fullscreenBtn.alpha = 0.85;
+      this.fullscreenBtn.on('pointerdown', () => {
+        void (async () => {
+          await toggleFullscreen();
+          this.redrawFullscreenLabel();
+        })();
+      });
+      this.addChild(this.fullscreenBtn);
+      document.addEventListener('fullscreenchange', this.onFullscreenChange);
+      document.addEventListener('webkitfullscreenchange', this.onFullscreenChange);
+    } else if (needsHomeScreenFullscreen()) {
+      // iPhone Safari/Brave: Apple doesn't expose Fullscreen API — Home Screen is the path.
+      this.fullscreenBtn = makeButton('Add to Home Screen', SECONDARY_LABEL_STYLE, 220, 42);
+      this.fullscreenBtn.alpha = 0.85;
+      this.fullscreenBtn.on('pointerdown', () => {
+        this.installTip.visible = !this.installTip.visible;
+        this.updateLayout();
+      });
+      this.addChild(this.fullscreenBtn);
+    }
+
+    this.installTip = new Text({
+      text: 'Share → Add to Home Screen\nOpens fullscreen like an app',
+      style: TIP_STYLE,
+    });
+    this.installTip.anchor.set(0.5);
+    this.installTip.visible = false;
+    this.addChild(this.installTip);
+
     this.soundRow = new Container();
     this.soundRow.eventMode = 'static';
     this.soundRow.cursor = 'pointer';
@@ -164,6 +209,8 @@ export class TitleScene extends Container {
     this.menuReady = false;
     this.startBtn.visible = false;
     this.leaderboardBtn.visible = false;
+    if (this.fullscreenBtn) this.fullscreenBtn.visible = false;
+    this.installTip.visible = false;
     this.soundRow.visible = false;
     this.tapPrompt.visible = true;
     this.tapPrompt.text = 'Tap to continue';
@@ -197,8 +244,22 @@ export class TitleScene extends Container {
     this.tapPrompt.visible = false;
     this.startBtn.visible = true;
     this.leaderboardBtn.visible = true;
+    if (this.fullscreenBtn) {
+      this.fullscreenBtn.visible = true;
+      this.redrawFullscreenLabel();
+    }
     this.soundRow.visible = true;
     this.updateLayout();
+  }
+
+  private onFullscreenChange = (): void => {
+    this.redrawFullscreenLabel();
+  };
+
+  private redrawFullscreenLabel(): void {
+    if (!this.fullscreenBtn) return;
+    const label = this.fullscreenBtn.children.find((c) => c instanceof Text) as Text | undefined;
+    if (label) label.text = isFullscreen() ? 'Exit Fullscreen' : 'Fullscreen';
   }
 
   private redrawSoundCheck(): void {
@@ -255,7 +316,19 @@ export class TitleScene extends Container {
     this.leaderboardBtn.x = w / 2;
     this.leaderboardBtn.y = this.startBtn.y + 58;
 
+    let y = this.leaderboardBtn.y + 50;
+    if (this.fullscreenBtn) {
+      this.fullscreenBtn.x = w / 2;
+      this.fullscreenBtn.y = y;
+      y += 50;
+    }
+
+    this.installTip.style.wordWrapWidth = Math.min(320, w - 40);
+    this.installTip.x = w / 2;
+    this.installTip.y = y + 8;
+    if (this.installTip.visible) y += 48;
+
     this.soundRow.x = w / 2 - 28;
-    this.soundRow.y = this.leaderboardBtn.y + 52;
+    this.soundRow.y = y + 2;
   }
 }
