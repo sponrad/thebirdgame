@@ -92,8 +92,9 @@ export const BIRD_DEAD_ALPHA = 0.8;
 export const BIRD_DEAD_DESPAWN_MARGIN = 12;
 /** Plane–bird overlap: game over. Use radius for circle check. */
 export const BIRD_PLANE_HIT_RADIUS = 8;
-/** Erode plane opaque mask inward (texture px) for friendlier plane↔bird hits. Balloon checks unchanged. */
-export const PLANE_BIRD_COLLISION_INSET = 5;
+/** Erode plane opaque mask inward (texture px) for friendlier plane↔bird hits. Balloon checks unchanged.
+ *  Higher = more lenient (smaller plane hitbox). */
+export const PLANE_BIRD_COLLISION_INSET = 19;
 
 /** Bird spawn (SkySceneControl): corners with buffer, interval 1.5s */
 export const BIRD_SPAWN_INTERVAL = 1.5;

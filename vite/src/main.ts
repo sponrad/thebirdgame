@@ -75,6 +75,7 @@ async function init(): Promise<void> {
     gameOverScene.refreshScores();
     if (!gameOverScene.parent) app.stage.addChild(gameOverScene);
     gameOverScene.updateLayout();
+    skyScene.bringDebugOverlayToFront();
   }
 
   function switchTo(scene: Scene): void {

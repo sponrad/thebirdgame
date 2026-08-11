@@ -216,18 +216,42 @@ export class SkyScene extends Container {
     this.updateWorldView();
     this.app.ticker.add(this.tickerBound);
 
+    // Debug overlay may have been promoted to stage during freeze — put it back.
+    if (this.debugOverlay.parent !== this) {
+      this.debugOverlay.parent?.removeChild(this.debugOverlay);
+      this.addChild(this.debugOverlay);
+    }
+
     this.app.stage.eventMode = 'static';
     this.app.stage.hitArea = this.app.screen;
     this.app.stage.on('pointerdown', this.onPointerDown, this);
     this.app.stage.on('pointerup', this.onPointerUp, this);
     this.app.stage.on('pointerupoutside', this.onPointerUp, this);
     this.app.stage.on('pointermove', this.onPointerMove, this);
+    window.removeEventListener('keydown', this.onDebugToggleKeyDown);
     window.addEventListener('keydown', this.onDebugToggleKeyDown);
   }
 
-  /** Stop simulation/input but keep the last frame visible for game-over overlay. */
+  /** Stop simulation/input but keep the last frame (+ debug outlines) for game-over. */
   freeze(): void {
-    this.stop();
+    this.app.ticker.remove(this.tickerBound);
+    this.app.stage.off('pointerdown', this.onPointerDown, this);
+    this.app.stage.off('pointerup', this.onPointerUp, this);
+    this.app.stage.off('pointerupoutside', this.onPointerUp, this);
+    this.app.stage.off('pointermove', this.onPointerMove, this);
+    this.plane.setInputPointer(false, false);
+    // Draw above the game-over dim so hitboxes stay readable.
+    this.bringDebugOverlayToFront();
+    if (this.debugCollisionEnabled) this.drawCollisionDebug();
+  }
+
+  /** Keep hitbox overlay above game-over UI when inspecting a freeze frame. */
+  bringDebugOverlayToFront(): void {
+    if (this.debugOverlay.parent !== this.app.stage) {
+      this.app.stage.addChild(this.debugOverlay);
+    } else {
+      this.app.stage.addChild(this.debugOverlay); // re-add → moves to top
+    }
   }
 
   stop(): void {
@@ -238,6 +262,10 @@ export class SkyScene extends Container {
     this.app.stage.off('pointermove', this.onPointerMove, this);
     this.plane.setInputPointer(false, false);
     window.removeEventListener('keydown', this.onDebugToggleKeyDown);
+    if (this.debugOverlay.parent && this.debugOverlay.parent !== this) {
+      this.debugOverlay.parent.removeChild(this.debugOverlay);
+      this.addChild(this.debugOverlay);
+    }
     this.debugOverlay.clear();
   }
 
@@ -246,6 +274,7 @@ export class SkyScene extends Container {
     if (e.key !== '0') return;
     this.debugCollisionEnabled = !this.debugCollisionEnabled;
     if (!this.debugCollisionEnabled) this.debugOverlay.clear();
+    else this.drawCollisionDebug();
   };
 
   private toScreenPoint(worldX: number, worldY: number): Point {
@@ -499,6 +528,8 @@ export class SkyScene extends Container {
       if (isHit) {
         Globals.inGame = false;
         audioManager.playPlayerDead();
+        // Paint hitboxes on the death frame before freeze clears the ticker.
+        this.drawCollisionDebug();
         this.onGameOver();
         return;
       }
