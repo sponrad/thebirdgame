@@ -38,10 +38,12 @@ import {
   VIEW_PADDING_PX,
   PLANE_BIRD_COLLISION_INSET,
   NEAR_MISS_RADIUS,
+  WAX_ON_SCORE,
+  WAX_OFF_SCORE,
 } from '../game/constants';
 import { Bird } from '../game/Bird';
 import { MultiplierPickup } from '../game/MultiplierPickup';
-import { LevelBorder } from '../game/LevelBorder';
+import { LevelBorder, type BorderUpdateResult } from '../game/LevelBorder';
 import { CloudBackground } from '../game/Cloud';
 import { formatScore } from '../utils/format';
 import {
@@ -84,6 +86,7 @@ export class SkyScene extends Container {
   private starTexture!: Texture;
   private scoreText!: Text;
   private multiplierText!: Text;
+  private waxProgressText!: Text;
   private planeTexture!: Texture;
   private exhaustTexture!: Texture;
   private tickerBound = () => this.tick();
@@ -196,6 +199,19 @@ export class SkyScene extends Container {
     this.multiplierText.x = 16;
     this.multiplierText.y = 44;
     this.addChild(this.multiplierText);
+
+    this.waxProgressText = new Text({
+      text: '',
+      style: new TextStyle({
+        fontFamily: 'sans-serif',
+        fontSize: 16,
+        fill: 0x39ff14,
+        fontWeight: 'bold',
+      }),
+    });
+    this.waxProgressText.anchor.set(0.5, 1);
+    this.waxProgressText.visible = false;
+    this.addChild(this.waxProgressText);
   }
 
   start(): void {
@@ -210,6 +226,9 @@ export class SkyScene extends Container {
     this.nearMissCooldown.clear();
     this.juice.reset();
     this.juice.setHeavy(!this.lowPower);
+    this.border.reset();
+    this.waxProgressText.visible = false;
+    this.waxProgressText.text = '';
     this.exhaustAccum = 0;
     this.balloonSpawnAccum = 0;
     this.birdSpawnAccum = 0;
@@ -509,7 +528,8 @@ export class SkyScene extends Container {
     this.prevPlaneX = this.plane.x;
     this.prevPlaneY = this.plane.y;
     this.plane.update(dt);
-    this.border.update(this.plane.x, this.plane.y, dt);
+    const wax = this.border.update(this.plane.x, this.plane.y, dt);
+    this.handleWaxResult(wax);
     this.updateWorldView(dt);
     this.debugBirdCollisionChecks.length = 0;
     this.debugBalloonSweepPoints.length = 0;
@@ -698,6 +718,46 @@ export class SkyScene extends Container {
     const mp = this.juice.getMultPunch();
     this.scoreText.scale.set(sp);
     this.multiplierText.scale.set(mp);
+  }
+
+  private handleWaxResult(wax: BorderUpdateResult): void {
+    const sw = this.app.screen.width;
+    const sh = this.app.screen.height;
+    this.waxProgressText.x = sw / 2;
+    this.waxProgressText.y = sh - 14;
+
+    if (wax.revealActive) {
+      this.waxProgressText.visible = true;
+      const pct = Math.floor(wax.progress * 100);
+      this.waxProgressText.text =
+        wax.phase === 'waxOff' ? `Wax Off ${pct}%` : `Wax On ${pct}%`;
+    } else {
+      this.waxProgressText.visible = false;
+    }
+
+    if (wax.waxOnComplete) {
+      const pts = WAX_ON_SCORE * Globals.scoreMultiplier;
+      Globals.score += pts;
+      this.juice.banner(sw / 2, sh * 0.38, 'WAX ON!', 0x39ff14);
+      this.juice.floatScore(sw / 2, sh * 0.48, pts);
+      this.juice.punchScore();
+      this.juice.shake(this.lowPower ? 5 : 10, 0.28);
+      this.juice.hitStop(0.06);
+      audioManager.playMultiplierPickup(1.4);
+      this.confetti.burst(this.plane.x, this.plane.y, 8, this.lowPower ? 1.2 : 1.8);
+    }
+
+    if (wax.waxOffComplete) {
+      const pts = WAX_OFF_SCORE * Globals.scoreMultiplier;
+      Globals.score += pts;
+      this.juice.banner(sw / 2, sh * 0.38, 'WAX OFF!', 0xffef3b);
+      this.juice.floatScore(sw / 2, sh * 0.48, pts);
+      this.juice.punchScore();
+      this.juice.shake(this.lowPower ? 7 : 14, 0.35);
+      this.juice.hitStop(0.07);
+      audioManager.playMultiplierPickup(1.7);
+      this.confetti.burst(this.plane.x, this.plane.y, 10, this.lowPower ? 1.4 : 2.2);
+    }
   }
 
   private popBalloon(b: Balloon, index: number, now: number): void {

@@ -17,6 +17,12 @@ type FloatBit = {
   vy: number;
 };
 
+type BannerBit = {
+  text: Text;
+  life: number;
+  maxLife: number;
+};
+
 /**
  * Arcade juice: screen shake, hit-stop, floating scores, HUD punches.
  * Heavy effects can be disabled via `heavy` (e.g. low-power mode).
@@ -25,6 +31,7 @@ export class JuiceSystem {
   /** Screen-space layer for floating scores (parented outside the zoomed world). */
   readonly floatLayer: Container;
   private floats: FloatBit[] = [];
+  private banners: BannerBit[] = [];
   private shakeAmp = 0;
   private shakeTime = 0;
   private shakeDur = 0;
@@ -63,6 +70,11 @@ export class JuiceSystem {
       f.text.destroy();
     }
     this.floats.length = 0;
+    for (const b of this.banners) {
+      this.floatLayer.removeChild(b.text);
+      b.text.destroy();
+    }
+    this.banners.length = 0;
   }
 
   /** Register a balloon pop; returns combo count after this pop. */
@@ -119,6 +131,25 @@ export class JuiceSystem {
       vx: (Math.random() - 0.5) * 18,
       vy: -42 - Math.random() * 18,
     });
+  }
+
+  /** Big centered announcement (e.g. WAX ON!). */
+  banner(screenX: number, screenY: number, message: string, color = 0x39ff14): void {
+    const style = new TextStyle({
+      fontFamily: 'Arial, Helvetica, sans-serif',
+      fontSize: 52,
+      fill: color,
+      fontWeight: 'bold',
+      stroke: { color: 0x111111, width: 6, join: 'round' },
+      letterSpacing: 2,
+    });
+    const text = new Text({ text: message, style });
+    text.anchor.set(0.5);
+    text.x = screenX;
+    text.y = screenY;
+    text.scale.set(0.65);
+    this.floatLayer.addChild(text);
+    this.banners.push({ text, life: 0, maxLife: 1.6 });
   }
 
   /** Start a short slow-mo death beat. Returns false until finished. */
@@ -207,6 +238,25 @@ export class JuiceSystem {
       this.floats[write++] = f;
     }
     this.floats.length = write;
+
+    let bWrite = 0;
+    for (let i = 0; i < this.banners.length; i++) {
+      const b = this.banners[i]!;
+      b.life += dt;
+      if (b.life >= b.maxLife) {
+        this.floatLayer.removeChild(b.text);
+        b.text.destroy();
+        continue;
+      }
+      const t = b.life / b.maxLife;
+      const pop = t < 0.12 ? t / 0.12 : 1;
+      const shrink = t > 0.7 ? 1 - ((t - 0.7) / 0.3) * 0.15 : 1;
+      b.text.scale.set(0.65 + pop * 0.45 * shrink);
+      b.text.alpha = t < 0.75 ? 1 : 1 - (t - 0.75) / 0.25;
+      b.text.y -= 12 * dt;
+      this.banners[bWrite++] = b;
+    }
+    this.banners.length = bWrite;
   }
 }
 

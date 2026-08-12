@@ -125,6 +125,15 @@ export const BORDER_COLOR = 0xeef7fc;
 export const BORDER_BASE_ALPHA = 0.08;
 /** World distance from plane where border dashes start darkening toward black. */
 export const BORDER_WARN_DISTANCE = 50;
+/** How close the plane must be to a dash to wax it on/off. */
+export const BORDER_TOUCH_RADIUS = 2.8;
+/** Neon green for waxed dashes. */
+export const BORDER_WAX_COLOR = 0x39ff14;
+/** Don't show painted dashes until this fraction of the perimeter is waxed. */
+export const BORDER_WAX_REVEAL_FRACTION = 0.25;
+/** Score for completing a full Wax On / Wax Off (× multiplier). */
+export const WAX_ON_SCORE = 10000;
+export const WAX_OFF_SCORE = 30000;
 
 /** Painted noise cloud backdrop */
 export const CLOUD_SCROLL_SPEED_X = 0.35;
