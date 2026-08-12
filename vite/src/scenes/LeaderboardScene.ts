@@ -74,7 +74,7 @@ function makeButton(label: string, width: number, height: number): Container {
   return btn;
 }
 
-/** Overlay listing the local top scores. */
+/** Overlay listing shared top scores. Scrolls when the list is taller than the screen. */
 export class LeaderboardScene extends Container {
   private app: Application;
   private onBack: () => void;
@@ -85,8 +85,18 @@ export class LeaderboardScene extends Container {
   private headerName!: Text;
   private headerScore!: Text;
   private emptyText!: Text;
+  private listClip!: Container;
+  private listMask!: Graphics;
+  private listContent!: Container;
   private rows: ScoreRow[] = [];
   private backBtn!: Container;
+  private scrollY = 0;
+  private maxScroll = 0;
+  private listViewportH = 0;
+  private contentH = 0;
+  private dragging = false;
+  private dragStartY = 0;
+  private dragStartScroll = 0;
 
   constructor(app: Application, onBack: () => void) {
     super();
@@ -113,9 +123,21 @@ export class LeaderboardScene extends Container {
     this.addChild(this.headerName);
     this.addChild(this.headerScore);
 
+    this.listClip = new Container();
+    this.listClip.eventMode = 'static';
+    this.listClip.cursor = 'default';
+    this.addChild(this.listClip);
+
+    this.listMask = new Graphics();
+    this.listClip.addChild(this.listMask);
+    this.listClip.mask = this.listMask;
+
+    this.listContent = new Container();
+    this.listClip.addChild(this.listContent);
+
     this.emptyText = new Text({ text: 'No scores yet\nPlay a round!', style: EMPTY_STYLE });
     this.emptyText.anchor.set(0.5);
-    this.addChild(this.emptyText);
+    this.listContent.addChild(this.emptyText);
 
     for (let i = 0; i < MAX_SCORES; i++) {
       const root = new Container();
@@ -125,18 +147,26 @@ export class LeaderboardScene extends Container {
       score.anchor.set(1, 0);
       root.addChild(rank, name, score);
       this.rows.push({ root, rank, name, score });
-      this.addChild(root);
+      this.listContent.addChild(root);
     }
 
     this.backBtn = makeButton('Back', 160, 44);
     this.backBtn.on('pointerdown', () => this.onBack());
     this.addChild(this.backBtn);
 
+    this.listClip.on('pointerdown', this.onDragStart);
+    this.listClip.on('pointermove', this.onDragMove);
+    this.listClip.on('pointerup', this.onDragEnd);
+    this.listClip.on('pointerupoutside', this.onDragEnd);
+    this.listClip.on('pointercancel', this.onDragEnd);
+    this.app.canvas.addEventListener('wheel', this.onWheel, { passive: false });
+
     this.showStatus('No scores yet\nPlay a round!');
     this.updateLayout();
   }
 
   async refresh(): Promise<void> {
+    this.scrollY = 0;
     this.showStatus('Loading…');
     this.updateLayout();
     try {
@@ -145,6 +175,7 @@ export class LeaderboardScene extends Container {
     } catch {
       this.showStatus('Couldn’t load scores');
     }
+    this.scrollY = 0;
     this.updateLayout();
   }
 
@@ -187,18 +218,25 @@ export class LeaderboardScene extends Container {
     this.dim.rect(0, 0, w, h).fill({ color: 0x000000, alpha: 0.45 });
 
     const padX = 22;
-    const padTop = 20;
+    const padTop = 16;
     const rowH = 32;
-    const titleBlock = 44;
-    const headerH = 26;
+    const titleBlock = 40;
+    const headerH = 24;
     const btnH = 44;
-    const padBot = 18;
+    const padBot = 14;
+    const chromeH = padTop + titleBlock + headerH + btnH + padBot + 10;
     const visibleRows = this.rows.filter((r) => r.root.visible).length;
-    const listH = this.emptyText.visible ? 72 : Math.max(1, visibleRows) * rowH;
+    this.contentH = this.emptyText.visible ? 72 : Math.max(1, visibleRows) * rowH;
+
     const cardW = Math.min(380, w - 40);
-    const cardH = padTop + titleBlock + headerH + listH + btnH + padBot + 12;
+    const maxCardH = Math.max(chromeH + 48, h - 24);
+    this.listViewportH = Math.min(this.contentH, Math.max(48, maxCardH - chromeH));
+    const cardH = chromeH + this.listViewportH;
     const cardX = (w - cardW) / 2;
-    const cardY = Math.max(12, (h - cardH) / 2);
+    const cardY = Math.max(8, (h - cardH) / 2);
+
+    this.maxScroll = Math.max(0, this.contentH - this.listViewportH);
+    this.scrollY = Math.max(0, Math.min(this.maxScroll, this.scrollY));
 
     this.card.clear();
     this.card.roundRect(cardX, cardY, cardW, cardH, 10).fill({ color: 0xffffff });
@@ -216,19 +254,57 @@ export class LeaderboardScene extends Container {
     this.headerScore.y = headerY;
 
     const listTop = headerY + headerH;
-    this.emptyText.x = w / 2;
-    this.emptyText.y = listTop + listH / 2;
+    this.listClip.x = cardX;
+    this.listClip.y = listTop;
+    this.listClip.hitArea = new Rectangle(0, 0, cardW, this.listViewportH);
+    this.listClip.cursor = this.maxScroll > 0 ? 'grab' : 'default';
+
+    this.listMask.clear();
+    this.listMask.rect(0, 0, cardW, this.listViewportH).fill({ color: 0xffffff });
+
+    this.listContent.y = -this.scrollY;
+
+    this.emptyText.x = cardW / 2;
+    this.emptyText.y = this.contentH / 2;
 
     for (let i = 0; i < this.rows.length; i++) {
       const row = this.rows[i]!;
       row.root.x = 0;
-      row.root.y = listTop + i * rowH;
-      row.rank.x = cardX + padX;
-      row.name.x = cardX + padX + 36;
-      row.score.x = cardX + cardW - padX;
+      row.root.y = i * rowH;
+      row.rank.x = padX;
+      row.name.x = padX + 36;
+      row.score.x = cardW - padX;
     }
 
     this.backBtn.x = w / 2;
     this.backBtn.y = cardY + cardH - padBot - btnH / 2;
   }
+
+  private onDragStart = (e: { global: { y: number } }): void => {
+    if (this.maxScroll <= 0) return;
+    this.dragging = true;
+    this.dragStartY = e.global.y;
+    this.dragStartScroll = this.scrollY;
+    this.listClip.cursor = 'grabbing';
+  };
+
+  private onDragMove = (e: { global: { y: number } }): void => {
+    if (!this.dragging) return;
+    const dy = e.global.y - this.dragStartY;
+    this.scrollY = Math.max(0, Math.min(this.maxScroll, this.dragStartScroll - dy));
+    this.listContent.y = -this.scrollY;
+  };
+
+  private onDragEnd = (): void => {
+    if (!this.dragging) return;
+    this.dragging = false;
+    this.listClip.cursor = this.maxScroll > 0 ? 'grab' : 'default';
+  };
+
+  private onWheel = (e: WheelEvent): void => {
+    if (!this.parent || this.maxScroll <= 0) return;
+    e.preventDefault();
+    this.scrollY = Math.max(0, Math.min(this.maxScroll, this.scrollY + e.deltaY));
+    this.listContent.y = -this.scrollY;
+  };
 }
