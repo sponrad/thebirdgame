@@ -1,9 +1,10 @@
 /**
- * Local prefs: sound, personal best, last leaderboard name.
+ * Local prefs: sound, music, personal best, last leaderboard name.
  * Shared high scores live on the server (see leaderboardApi.ts).
  */
 
 const KEY_SOUND = 'thebirdgame_sound';
+const KEY_MUSIC = 'thebirdgame_music';
 const KEY_HIGH_SCORE = 'thebirdgame_highScore';
 const KEY_LAST_NAME = 'thebirdgame_lastName';
 const KEY_LOW_POWER = 'thebirdgame_lowPower';
@@ -31,6 +32,23 @@ export function getSound(): boolean {
 export function setSound(on: boolean): void {
   try {
     localStorage.setItem(KEY_SOUND, on ? '1' : '0');
+  } catch {
+    // ignore
+  }
+}
+
+export function getMusic(): boolean {
+  try {
+    const v = localStorage.getItem(KEY_MUSIC);
+    return v === null || v === '1';
+  } catch {
+    return true;
+  }
+}
+
+export function setMusic(on: boolean): void {
+  try {
+    localStorage.setItem(KEY_MUSIC, on ? '1' : '0');
   } catch {
     // ignore
   }

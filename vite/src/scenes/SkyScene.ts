@@ -503,6 +503,7 @@ export class SkyScene extends Container {
   private tick(): void {
     const realDt = Math.min(0.05, this.app.ticker.deltaMS / 1000);
     audioManager.beginFrame();
+    audioManager.updateMusic(realDt);
 
     if (this.dying) {
       this.juice.update(realDt);

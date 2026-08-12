@@ -1,6 +1,6 @@
 import { Application } from 'pixi.js';
 import { Globals, resetForNewGame } from './game/Globals';
-import { getSound, getHighScore, setHighScore, getLowPowerMode, getAntialias } from './utils/storage';
+import { getSound, getMusic, getHighScore, setHighScore, getLowPowerMode, getAntialias } from './utils/storage';
 import { isCoarsePointerMobile, setupMobileChrome } from './utils/landscape';
 import { audioManager } from './audio/AudioManager';
 import { TitleScene } from './scenes/TitleScene';
@@ -15,6 +15,7 @@ async function init(): Promise<void> {
   setupMobileChrome();
 
   Globals.sound = getSound();
+  Globals.music = getMusic();
   Globals.highScore = getHighScore();
   Globals.lowPowerMode = getLowPowerMode(isCoarsePointerMobile());
   Globals.antialias = getAntialias(!Globals.lowPowerMode);
@@ -52,6 +53,7 @@ async function init(): Promise<void> {
     app,
     () => {
       resetForNewGame();
+      audioManager.setMusicScene('game');
       switchTo(skyScene);
     },
     () => showLeaderboardOverlay(),
@@ -63,12 +65,16 @@ async function init(): Promise<void> {
     () => {
       hideGameOverOverlay();
       resetForNewGame();
+      audioManager.setMusicScene('game');
       skyScene.start();
       currentScene = skyScene;
     },
     () => showLeaderboardOverlay(),
     () => showHowToPlayOverlay(),
-    () => switchTo(titleScene)
+    () => {
+      audioManager.setMusicScene('menu');
+      switchTo(titleScene);
+    }
   );
 
   const leaderboardScene = new LeaderboardScene(app, () => hideLeaderboardOverlay());
@@ -97,6 +103,7 @@ async function init(): Promise<void> {
     hideLeaderboardOverlay();
     hideHowToPlayOverlay();
     skyScene.freeze();
+    audioManager.setMusicScene('menu');
     gameOverScene.refreshScores();
     if (!gameOverScene.parent) app.stage.addChild(gameOverScene);
     gameOverScene.updateLayout();

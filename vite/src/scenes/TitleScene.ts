@@ -9,7 +9,7 @@ import {
 } from 'pixi.js';
 import type { Application } from 'pixi.js';
 import { Globals } from '../game/Globals';
-import { setSound, setLowPowerMode, setAntialias } from '../utils/storage';
+import { setSound, setMusic, setLowPowerMode, setAntialias } from '../utils/storage';
 import { audioManager } from '../audio/AudioManager';
 import { canFullscreen, isFullscreen, toggleFullscreen, needsHomeScreenFullscreen, isCoarsePointerMobile } from '../utils/landscape';
 import { addButtonPressJuice } from '../game/Juice';
@@ -139,6 +139,9 @@ export class TitleScene extends Container {
   private soundRow!: Container;
   private soundCheckBg!: Graphics;
   private soundCheckMark!: Graphics;
+  private musicRow!: Container;
+  private musicCheckBg!: Graphics;
+  private musicCheckMark!: Graphics;
   private lowPowerRow!: Container;
   private lowPowerCheckBg!: Graphics;
   private lowPowerCheckMark!: Graphics;
@@ -255,6 +258,13 @@ export class TitleScene extends Container {
     this.soundRow.on('pointerdown', this.toggleSound, this);
     this.addChild(this.soundRow);
 
+    const music = makeCheckRow('Music');
+    this.musicRow = music.row;
+    this.musicCheckBg = music.bg;
+    this.musicCheckMark = music.mark;
+    this.musicRow.on('pointerdown', this.toggleMusic, this);
+    this.addChild(this.musicRow);
+
     const lowPower = makeCheckRow('Low power mode');
     this.lowPowerRow = lowPower.row;
     this.lowPowerCheckBg = lowPower.bg;
@@ -270,6 +280,7 @@ export class TitleScene extends Container {
     this.addChild(this.antialiasRow);
 
     this.redrawSoundCheck();
+    this.redrawMusicCheck();
     this.redrawLowPowerCheck();
     this.redrawAntialiasCheck();
     this.updateLayout();
@@ -290,6 +301,7 @@ export class TitleScene extends Container {
     if (this.fullscreenBtn) this.fullscreenBtn.visible = false;
     this.installTip.visible = false;
     this.soundRow.visible = false;
+    this.musicRow.visible = false;
     this.lowPowerRow.visible = false;
     this.antialiasRow.visible = false;
     this.tapPrompt.visible = true;
@@ -330,9 +342,12 @@ export class TitleScene extends Container {
       this.redrawFullscreenLabel();
     }
     this.soundRow.visible = true;
+    this.musicRow.visible = true;
     this.lowPowerRow.visible = true;
     this.antialiasRow.visible = true;
     this.updateLayout();
+    audioManager.setMusicScene('menu');
+    audioManager.syncMusicPlayback();
   }
 
   private onFullscreenChange = (): void => {
@@ -347,6 +362,10 @@ export class TitleScene extends Container {
 
   private redrawSoundCheck(): void {
     this.drawCheck(this.soundCheckBg, this.soundCheckMark, Globals.sound);
+  }
+
+  private redrawMusicCheck(): void {
+    this.drawCheck(this.musicCheckBg, this.musicCheckMark, Globals.music);
   }
 
   private redrawLowPowerCheck(): void {
@@ -376,6 +395,14 @@ export class TitleScene extends Container {
     Globals.sound = !Globals.sound;
     setSound(Globals.sound);
     this.redrawSoundCheck();
+  }
+
+  private toggleMusic(): void {
+    void audioManager.whenReady();
+    Globals.music = !Globals.music;
+    setMusic(Globals.music);
+    this.redrawMusicCheck();
+    audioManager.setMusicEnabled(Globals.music);
   }
 
   private toggleLowPower(): void {
@@ -427,7 +454,7 @@ export class TitleScene extends Container {
     this.landscapeTip.x = w / 2;
     this.landscapeTip.y = this.subtitle.y + (compact ? 28 : 32);
 
-    const checksReserve = compact ? 56 : 0;
+    const checksReserve = compact ? 72 : 0;
     const menuFloor = h - checksReserve;
     const startGap = compact ? 64 : 58;
     const secondaryGap = compact ? 56 : 50;
@@ -479,31 +506,42 @@ export class TitleScene extends Container {
     this.layoutCheckRows(w, h, y, compact);
   }
 
-  /** Portrait: stacked under menu. Landscape/short: one row along the bottom. */
+  /** Portrait: stacked under menu. Landscape/short: two rows along the bottom. */
   private layoutCheckRows(w: number, h: number, stackY: number, compact: boolean): void {
-    const rows = [this.soundRow, this.lowPowerRow, this.antialiasRow];
+    const rows = [this.soundRow, this.musicRow, this.lowPowerRow, this.antialiasRow];
     for (const row of rows) row.scale.set(1);
 
     if (!compact) {
       this.soundRow.x = w / 2 - 28;
       this.soundRow.y = stackY + 2;
+      this.musicRow.x = w / 2 - 28;
+      this.musicRow.y = this.soundRow.y + 34;
       this.lowPowerRow.x = w / 2 - 28;
-      this.lowPowerRow.y = this.soundRow.y + 34;
+      this.lowPowerRow.y = this.musicRow.y + 34;
       this.antialiasRow.x = w / 2 - 28;
       this.antialiasRow.y = this.lowPowerRow.y + 34;
       return;
     }
 
-    const gap = Math.min(40, Math.max(20, w * 0.045));
-    const widths = rows.map((row) => Math.max(1, row.getLocalBounds().width));
-    const total = widths.reduce((a, b) => a + b, 0) + gap * (rows.length - 1);
-    let x = (w - total) / 2;
-    const y = h - 30;
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i]!;
-      row.x = x;
-      row.y = y;
-      x += widths[i]! + gap;
+    const rowPairs = [
+      [this.soundRow, this.musicRow],
+      [this.lowPowerRow, this.antialiasRow],
+    ] as const;
+    const gap = Math.min(40, Math.max(18, w * 0.04));
+    const y0 = h - 52;
+    const y1 = h - 24;
+    const ys = [y0, y1];
+    for (let r = 0; r < rowPairs.length; r++) {
+      const pair = rowPairs[r]!;
+      const widths = pair.map((row) => Math.max(1, row.getLocalBounds().width));
+      const total = widths[0]! + widths[1]! + gap;
+      let x = (w - total) / 2;
+      for (let i = 0; i < pair.length; i++) {
+        const row = pair[i]!;
+        row.x = x;
+        row.y = ys[r]!;
+        x += widths[i]! + gap;
+      }
     }
   }
 

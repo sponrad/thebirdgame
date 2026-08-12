@@ -9,6 +9,9 @@ export const ENEMY_SPAWN_FILES = ['vulture01', 'vulture02'];
 export const PLAYER_DEAD_FILES = ['birdroar01'];
 export const MULTIPLIER_PICKUP_FILES = ['boop1', 'boop2', 'boop3', 'boop4', 'boop5'];
 
+/** Looping menu / in-game background track (public/audio). */
+export const MUSIC_FILE = 'SkywardAscent';
+
 export type AudioCategory =
   | 'balloonSpawn'
   | 'balloonPop'

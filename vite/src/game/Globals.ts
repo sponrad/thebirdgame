@@ -5,6 +5,7 @@
 
 export const Globals = {
   sound: true,
+  music: true,
   lowPowerMode: false,
   antialias: true,
   score: 0,

@@ -1,5 +1,5 @@
 import { Globals } from '../game/Globals';
-import { AUDIO_FILES, type AudioCategory } from './audioKeys';
+import { AUDIO_FILES, MUSIC_FILE, type AudioCategory } from './audioKeys';
 
 /** MP3 — required for iOS / Brave (WebKit). */
 const AUDIO_EXT = '.mp3';
@@ -9,6 +9,12 @@ const BASE = '/audio/';
 const MAX_VOICES = 4;
 /** New voices allowed per animation frame. */
 const MAX_PLAYS_PER_FRAME = 2;
+
+/** Background music levels (linear gain). In-game ramps from menu → peak over time. */
+const MUSIC_GAIN_MENU = 0.16;
+const MUSIC_GAIN_GAME = 0.4;
+/** Seconds of gameplay to reach full in-game music level. */
+const MUSIC_GAIN_RAMP_SEC = 60;
 
 /** Min seconds between plays of the same category. */
 const COOLDOWN_SEC: Record<AudioCategory, number> = {
@@ -60,6 +66,8 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   });
 }
 
+export type MusicScene = 'menu' | 'game';
+
 /**
  * Load once → unlock on gesture → silent-prime every buffer → cheap play().
  * Never await AudioContext.resume() during boot — it can hang forever on iOS/Brave.
@@ -67,6 +75,11 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 export class AudioManager {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
+  private musicGain: GainNode | null = null;
+  private musicSource: AudioBufferSourceNode | null = null;
+  private musicScene: MusicScene = 'menu';
+  /** Elapsed gameplay seconds while musicScene === 'game' (for volume ramp). */
+  private gameMusicElapsed = 0;
   private buffers = new Map<string, AudioBuffer>();
   private expectedCount = 0;
 
@@ -92,10 +105,15 @@ export class AudioManager {
     this.master.gain.value = 1;
     this.master.connect(this.ctx.destination);
 
+    this.musicGain = this.ctx.createGain();
+    this.musicGain.gain.value = 0;
+    this.musicGain.connect(this.ctx.destination);
+
     const files = new Set<string>();
     for (const list of Object.values(AUDIO_FILES)) {
       for (const name of list) files.add(name);
     }
+    files.add(MUSIC_FILE);
     this.expectedCount = files.size;
 
     await Promise.all(
@@ -103,12 +121,12 @@ export class AudioManager {
         try {
           const res = await withTimeout(fetch(BASE + name + AUDIO_EXT), 8000, `fetch ${name}`);
           if (!res || !res.ok) return;
-          const ab = await withTimeout(res.arrayBuffer(), 8000, `buffer ${name}`);
+          const ab = await withTimeout(res.arrayBuffer(), 12000, `buffer ${name}`);
           if (!ab) return;
           // Decode on the realtime context (not offline) for WebKit.
           const buf = await withTimeout(
             this.ctx!.decodeAudioData(ab.slice(0)),
-            8000,
+            12000,
             `decode ${name}`
           );
           if (buf) this.buffers.set(name, buf);
@@ -201,7 +219,9 @@ export class AudioManager {
       mute.connect(this.master);
 
       const finishes: Promise<void>[] = [];
-      for (const buf of this.buffers.values()) {
+      for (const [name, buf] of this.buffers) {
+        // Skip silent-priming the long music bed — only needs a real start later.
+        if (name === MUSIC_FILE) continue;
         finishes.push(
           new Promise<void>((resolve) => {
             const done = (): void => resolve();
@@ -229,9 +249,112 @@ export class AudioManager {
         /* ignore */
       }
       this.primed = true;
+      this.syncMusicPlayback();
     })();
 
     return this.primePromise;
+  }
+
+  /** Menu vs in-game music. Game starts at menu level and ramps up over time. */
+  setMusicScene(scene: MusicScene): void {
+    this.musicScene = scene;
+    this.gameMusicElapsed = 0;
+    if (scene === 'game') {
+      // Begin quiet; updateMusic() will climb toward MUSIC_GAIN_GAME.
+      this.applyMusicGain(false);
+    } else {
+      this.applyMusicGain(true);
+    }
+  }
+
+  setMusicEnabled(on: boolean): void {
+    Globals.music = on;
+    this.syncMusicPlayback();
+  }
+
+  /**
+   * Advance in-game music volume ramp. Call each frame while playing
+   * (real dt — continues through hit-stop).
+   */
+  updateMusic(dt: number): void {
+    if (this.musicScene !== 'game' || !Globals.music) return;
+    if (!this.ctx || !this.musicGain) return;
+    if (this.gameMusicElapsed >= MUSIC_GAIN_RAMP_SEC) return;
+    this.gameMusicElapsed = Math.min(MUSIC_GAIN_RAMP_SEC, this.gameMusicElapsed + dt);
+    this.musicGain.gain.value = this.currentMusicGain();
+  }
+
+  /** Start / stop looping bed to match Globals.music + unlock state. */
+  syncMusicPlayback(): void {
+    if (!Globals.music || !this.ctx || !this.musicGain || !this.loaded) {
+      this.stopMusicSource();
+      return;
+    }
+    if (this.ctx.state !== 'running') {
+      void this.ctx.resume().then(() => {
+        if (this.ctx?.state === 'running') {
+          this.unlocked = true;
+          this.syncMusicPlayback();
+        }
+      });
+      return;
+    }
+    if (this.musicSource) {
+      this.applyMusicGain(true);
+      return;
+    }
+    const buf = this.buffers.get(MUSIC_FILE);
+    if (!buf) return;
+    try {
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      src.connect(this.musicGain);
+      this.applyMusicGain(false);
+      src.start(0);
+      this.musicSource = src;
+      src.onended = () => {
+        if (this.musicSource === src) this.musicSource = null;
+      };
+    } catch (e) {
+      console.warn('Music start failed', e);
+      this.musicSource = null;
+    }
+  }
+
+  private currentMusicGain(): number {
+    if (!Globals.music) return 0;
+    if (this.musicScene !== 'game') return MUSIC_GAIN_MENU;
+    const t = Math.min(1, this.gameMusicElapsed / MUSIC_GAIN_RAMP_SEC);
+    return MUSIC_GAIN_MENU + (MUSIC_GAIN_GAME - MUSIC_GAIN_MENU) * t;
+  }
+
+  private applyMusicGain(ramp: boolean): void {
+    if (!this.ctx || !this.musicGain) return;
+    const target = this.currentMusicGain();
+    if (ramp) {
+      this.musicGain.gain.cancelScheduledValues(this.ctx.currentTime);
+      this.musicGain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.12);
+    } else {
+      this.musicGain.gain.cancelScheduledValues(this.ctx.currentTime);
+      this.musicGain.gain.value = target;
+    }
+  }
+
+  private stopMusicSource(): void {
+    if (!this.musicSource) {
+      if (this.musicGain) this.musicGain.gain.value = 0;
+      return;
+    }
+    try {
+      this.musicSource.onended = null;
+      this.musicSource.stop();
+      this.musicSource.disconnect();
+    } catch {
+      /* ignore */
+    }
+    this.musicSource = null;
+    if (this.musicGain) this.musicGain.gain.value = 0;
   }
 
   /** Call once at the start of each game tick. */
