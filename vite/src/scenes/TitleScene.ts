@@ -120,6 +120,7 @@ export class TitleScene extends Container {
   private app: Application;
   private onPlay: () => void;
   private onLeaderboard: () => void;
+  private onHowToPlay: () => void;
   private clipMask!: Graphics;
   private splash!: Sprite;
   private title!: Text;
@@ -127,6 +128,7 @@ export class TitleScene extends Container {
   private tapPrompt!: Text;
   private startBtn!: Container;
   private leaderboardBtn!: Container;
+  private howToPlayBtn!: Container;
   private fullscreenBtn!: Container | null;
   private installTip!: Text;
   private landscapeTip!: Text;
@@ -142,19 +144,26 @@ export class TitleScene extends Container {
   private menuReady = false;
   private priming = false;
 
-  private constructor(app: Application, onPlay: () => void, onLeaderboard: () => void) {
+  private constructor(
+    app: Application,
+    onPlay: () => void,
+    onLeaderboard: () => void,
+    onHowToPlay: () => void
+  ) {
     super();
     this.app = app;
     this.onPlay = onPlay;
     this.onLeaderboard = onLeaderboard;
+    this.onHowToPlay = onHowToPlay;
   }
 
   static async create(
     app: Application,
     onPlay: () => void,
-    onLeaderboard: () => void
+    onLeaderboard: () => void,
+    onHowToPlay: () => void
   ): Promise<TitleScene> {
-    const scene = new TitleScene(app, onPlay, onLeaderboard);
+    const scene = new TitleScene(app, onPlay, onLeaderboard, onHowToPlay);
     const splashTexture = await Assets.load<Texture>('/sprites/icon-swooping-bird.png');
     scene.build(splashTexture);
     return scene;
@@ -189,6 +198,11 @@ export class TitleScene extends Container {
     this.leaderboardBtn.alpha = 0.85;
     this.leaderboardBtn.on('pointerdown', () => this.onLeaderboard());
     this.addChild(this.leaderboardBtn);
+
+    this.howToPlayBtn = makeButton('How to Play', SECONDARY_LABEL_STYLE, 180, 42);
+    this.howToPlayBtn.alpha = 0.85;
+    this.howToPlayBtn.on('pointerdown', () => this.onHowToPlay());
+    this.addChild(this.howToPlayBtn);
 
     this.fullscreenBtn = null;
     if (canFullscreen()) {
@@ -268,6 +282,7 @@ export class TitleScene extends Container {
     this.menuReady = false;
     this.startBtn.visible = false;
     this.leaderboardBtn.visible = false;
+    this.howToPlayBtn.visible = false;
     if (this.fullscreenBtn) this.fullscreenBtn.visible = false;
     this.installTip.visible = false;
     this.soundRow.visible = false;
@@ -305,6 +320,7 @@ export class TitleScene extends Container {
     this.tapPrompt.visible = false;
     this.startBtn.visible = true;
     this.leaderboardBtn.visible = true;
+    this.howToPlayBtn.visible = true;
     if (this.fullscreenBtn) {
       this.fullscreenBtn.visible = true;
       this.redrawFullscreenLabel();
@@ -416,9 +432,10 @@ export class TitleScene extends Container {
       ? Math.min(afterBrand + 52, menuFloor * 0.4)
       : afterBrand + 70;
 
-    // Keep Start → Leaderboard → Fullscreen above the bottom check row.
+    // Keep Start → secondary buttons above the bottom check row.
     if (compact) {
-      const menuBlockH = this.fullscreenBtn ? startGap + secondaryGap : startGap;
+      const secondaryCount = 2 + (this.fullscreenBtn ? 1 : 0);
+      const menuBlockH = startGap + secondaryGap * secondaryCount;
       const maxStartY = menuFloor - 24 - menuBlockH;
       if (menuY > maxStartY) menuY = Math.max(afterBrand + 40, maxStartY);
     }
@@ -434,7 +451,11 @@ export class TitleScene extends Container {
     this.leaderboardBtn.x = w / 2;
     this.leaderboardBtn.y = this.startBtn.y + startGap;
 
-    let y = this.leaderboardBtn.y + secondaryGap;
+    this.howToPlayBtn.scale.set(1);
+    this.howToPlayBtn.x = w / 2;
+    this.howToPlayBtn.y = this.leaderboardBtn.y + secondaryGap;
+
+    let y = this.howToPlayBtn.y + secondaryGap;
     if (this.fullscreenBtn) {
       this.fullscreenBtn.scale.set(1);
       this.fullscreenBtn.x = w / 2;

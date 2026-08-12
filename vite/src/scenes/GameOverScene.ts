@@ -41,6 +41,7 @@ export class GameOverScene extends Container {
   private app: Application;
   private onPlayAgain: () => void;
   private onLeaderboard: () => void;
+  private onHowToPlay: () => void;
   private onTitle: () => void;
   private prompt: ScoreSavePrompt;
   private dim!: Graphics;
@@ -50,6 +51,7 @@ export class GameOverScene extends Container {
   private statusText!: Text;
   private playAgainBtn!: Text;
   private leaderboardBtn!: Text;
+  private howToPlayBtn!: Text;
   private titleBtn!: Text;
   private promptToken = 0;
 
@@ -57,12 +59,14 @@ export class GameOverScene extends Container {
     app: Application,
     onPlayAgain: () => void,
     onLeaderboard: () => void,
+    onHowToPlay: () => void,
     onTitle: () => void
   ) {
     super();
     this.app = app;
     this.onPlayAgain = onPlayAgain;
     this.onLeaderboard = onLeaderboard;
+    this.onHowToPlay = onHowToPlay;
     this.onTitle = onTitle;
     this.prompt = new ScoreSavePrompt({
       onSave: (name) => {
@@ -103,6 +107,13 @@ export class GameOverScene extends Container {
     this.leaderboardBtn.cursor = 'pointer';
     this.leaderboardBtn.on('pointerdown', () => this.onLeaderboard());
     this.addChild(this.leaderboardBtn);
+
+    this.howToPlayBtn = new Text({ text: 'How to Play', style: BUTTON_STYLE });
+    this.howToPlayBtn.anchor.set(0.5);
+    this.howToPlayBtn.eventMode = 'static';
+    this.howToPlayBtn.cursor = 'pointer';
+    this.howToPlayBtn.on('pointerdown', () => this.onHowToPlay());
+    this.addChild(this.howToPlayBtn);
 
     this.titleBtn = new Text({ text: 'Title', style: BUTTON_STYLE });
     this.titleBtn.anchor.set(0.5);
@@ -155,26 +166,30 @@ export class GameOverScene extends Container {
     this.dim.rect(0, 0, w, h).fill({ color: 0x000000, alpha: 0.22 });
 
     this.title.x = w / 2;
-    this.title.y = h / 2 - 90;
+    this.title.y = h / 2 - 110;
 
     this.scoreText.x = w / 2;
-    this.scoreText.y = h / 2 - 38;
+    this.scoreText.y = h / 2 - 58;
 
     this.bestText.x = w / 2;
-    this.bestText.y = h / 2 + 2;
+    this.bestText.y = h / 2 - 18;
 
     this.statusText.x = w / 2;
-    this.statusText.y = h / 2 + 40;
+    this.statusText.y = h / 2 + 20;
 
-    const buttonsY = this.statusText.text ? h / 2 + 78 : h / 2 + 58;
+    const btnGap = 40;
+    const buttonsY = this.statusText.text ? h / 2 + 56 : h / 2 + 42;
     this.playAgainBtn.x = w / 2;
     this.playAgainBtn.y = buttonsY;
 
     this.leaderboardBtn.x = w / 2;
-    this.leaderboardBtn.y = buttonsY + 42;
+    this.leaderboardBtn.y = buttonsY + btnGap;
+
+    this.howToPlayBtn.x = w / 2;
+    this.howToPlayBtn.y = buttonsY + btnGap * 2;
 
     this.titleBtn.x = w / 2;
-    this.titleBtn.y = buttonsY + 84;
+    this.titleBtn.y = buttonsY + btnGap * 3;
   }
 
   private async saveScore(name: string): Promise<void> {
@@ -208,9 +223,11 @@ export class GameOverScene extends Container {
   private setButtonsVisible(visible: boolean): void {
     this.playAgainBtn.visible = visible;
     this.leaderboardBtn.visible = visible;
+    this.howToPlayBtn.visible = visible;
     this.titleBtn.visible = visible;
     this.playAgainBtn.eventMode = visible ? 'static' : 'none';
     this.leaderboardBtn.eventMode = visible ? 'static' : 'none';
+    this.howToPlayBtn.eventMode = visible ? 'static' : 'none';
     this.titleBtn.eventMode = visible ? 'static' : 'none';
   }
 

@@ -18,7 +18,7 @@ export const PLANE_SCALE = 0.024;
 
 export const EXHAUST_SPAWN_INTERVAL = 0.25;
 export const EXHAUST_LIFETIME = 1.5;
-export const EXHAUST_SCALE = 0.032;
+export const EXHAUST_SCALE = 0.025;
 
 /** Camera: Unity-style follow with damp.
  *  Zoom is locked to horizontal arena coverage so every device sees the same

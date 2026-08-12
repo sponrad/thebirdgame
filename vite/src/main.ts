@@ -6,6 +6,7 @@ import { audioManager } from './audio/AudioManager';
 import { TitleScene } from './scenes/TitleScene';
 import { GameOverScene } from './scenes/GameOverScene';
 import { LeaderboardScene } from './scenes/LeaderboardScene';
+import { HowToPlayScene } from './scenes/HowToPlayScene';
 import { SkyScene } from './scenes/SkyScene';
 
 type Scene = TitleScene | GameOverScene | SkyScene;
@@ -53,7 +54,8 @@ async function init(): Promise<void> {
       resetForNewGame();
       switchTo(skyScene);
     },
-    () => showLeaderboardOverlay()
+    () => showLeaderboardOverlay(),
+    () => showHowToPlayOverlay()
   );
 
   const gameOverScene = new GameOverScene(
@@ -65,10 +67,12 @@ async function init(): Promise<void> {
       currentScene = skyScene;
     },
     () => showLeaderboardOverlay(),
+    () => showHowToPlayOverlay(),
     () => switchTo(titleScene)
   );
 
   const leaderboardScene = new LeaderboardScene(app, () => hideLeaderboardOverlay());
+  const howToPlayScene = new HowToPlayScene(app, () => hideHowToPlayOverlay());
 
   const skyScene = await SkyScene.create(app, () => {
     Globals.inGame = false;
@@ -91,6 +95,7 @@ async function init(): Promise<void> {
 
   function showGameOverOverlay(): void {
     hideLeaderboardOverlay();
+    hideHowToPlayOverlay();
     skyScene.freeze();
     gameOverScene.refreshScores();
     if (!gameOverScene.parent) app.stage.addChild(gameOverScene);
@@ -99,6 +104,7 @@ async function init(): Promise<void> {
   }
 
   function showLeaderboardOverlay(): void {
+    hideHowToPlayOverlay();
     if (!leaderboardScene.parent) app.stage.addChild(leaderboardScene);
     leaderboardScene.updateLayout();
     void leaderboardScene.refresh();
@@ -108,9 +114,20 @@ async function init(): Promise<void> {
     if (leaderboardScene.parent) app.stage.removeChild(leaderboardScene);
   }
 
+  function showHowToPlayOverlay(): void {
+    hideLeaderboardOverlay();
+    if (!howToPlayScene.parent) app.stage.addChild(howToPlayScene);
+    howToPlayScene.updateLayout();
+  }
+
+  function hideHowToPlayOverlay(): void {
+    if (howToPlayScene.parent) app.stage.removeChild(howToPlayScene);
+  }
+
   function switchTo(scene: Scene): void {
     hideGameOverOverlay();
     hideLeaderboardOverlay();
+    hideHowToPlayOverlay();
     if ('stop' in currentScene && typeof currentScene.stop === 'function') {
       currentScene.stop();
     }
@@ -130,6 +147,7 @@ async function init(): Promise<void> {
     if (titleScene.parent) titleScene.updateLayout();
     if (gameOverScene.parent) gameOverScene.updateLayout();
     if (leaderboardScene.parent) leaderboardScene.updateLayout();
+    if (howToPlayScene.parent) howToPlayScene.updateLayout();
   };
 
   // iOS often settles size after orientationchange; resize alone can miss a frame.
