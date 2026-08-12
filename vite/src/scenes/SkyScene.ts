@@ -33,8 +33,7 @@ import {
   BALLOON_SCALE,
   MULTIPLIER_ATTRACT_EXPLOSION_FACTOR,
   CAMERA_DAMP_TIME,
-  CAMERA_VIEW_HALF_EXTENT,
-  CAMERA_MOBILE_ZOOM,
+  CAMERA_VIEW_WIDTH_FRACTION,
   VIEW_PADDING_PX,
   PLANE_BIRD_COLLISION_INSET,
 } from '../game/constants';
@@ -42,7 +41,6 @@ import { Bird } from '../game/Bird';
 import { MultiplierPickup } from '../game/MultiplierPickup';
 import { createLevelBorder } from '../game/LevelBorder';
 import { CloudBackground } from '../game/Cloud';
-import { isCoarsePointerMobile } from '../utils/landscape';
 import {
   getSpriteOutlineWorldPoints,
   pixelPerfectOverlap,
@@ -95,7 +93,6 @@ export class SkyScene extends Container {
   private static SWEEP_SAMPLES = 5;
   /** Sample every Nth opaque pixel for pixel-perfect checks (2 ≈ half the work). */
   private static COLLISION_PIXEL_STRIDE = 2;
-  private readonly isMobile = isCoarsePointerMobile();
   private get lowPower(): boolean {
     return Globals.lowPowerMode;
   }
@@ -399,10 +396,10 @@ export class SkyScene extends Container {
     const pad = VIEW_PADDING_PX;
     const usableW = Math.max(1, sw - pad * 2);
     const usableH = Math.max(1, sh - pad * 2);
-    const mobile = this.isMobile;
-    const refPx = mobile ? Math.max(usableW, usableH) : usableH;
-    const scale =
-      (refPx / (CAMERA_VIEW_HALF_EXTENT * 2)) * (mobile ? CAMERA_MOBILE_ZOOM : 1);
+    // Same horizontal coverage on every device: see ~2/3 of the arena width.
+    const levelW = LEVEL_BOUNDS.maxX - LEVEL_BOUNDS.minX;
+    const viewW = Math.max(1, levelW * CAMERA_VIEW_WIDTH_FRACTION);
+    const scale = usableW / viewW;
     this.worldContainer.scale.set(scale);
 
     const viewHalfW = usableW / (2 * scale);

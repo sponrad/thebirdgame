@@ -21,16 +21,16 @@ export const EXHAUST_LIFETIME = 1.5;
 export const EXHAUST_SCALE = 0.032;
 
 /** Camera: Unity-style follow with damp.
- *  Desktop: zoom from screen height (~2× extent world units tall).
- *  Mobile: zoom from the longer axis so portrait/landscape keep similar plane size. */
+ *  Zoom is locked to horizontal arena coverage so every device sees the same
+ *  fraction of the playfield width (no resolution/aspect FOV advantage). */
 export const CAMERA_DAMP_TIME = 0.15;
+/** Visible world width as a fraction of level width (2/3 ⇒ pan the remaining 1/3). */
+export const CAMERA_VIEW_WIDTH_FRACTION = 4 / 5;
+/** @deprecated Horizontal FOV is now CAMERA_VIEW_WIDTH_FRACTION */
 export const CAMERA_VIEW_HALF_EXTENT = 20;
-/**
- * Mobile-only scale factor on top of longer-axis zoom.
- * <1 zooms out a bit (see more world); >1 zooms in.
- */
+/** @deprecated Mobile no longer uses a separate zoom multiplier */
 export const CAMERA_MOBILE_ZOOM = 0.45;
-/** @deprecated Use CAMERA_VIEW_HALF_EXTENT */
+/** @deprecated Use CAMERA_VIEW_WIDTH_FRACTION */
 export const CAMERA_VIEW_HALF_HEIGHT = CAMERA_VIEW_HALF_EXTENT;
 /** Keep level border / view inset from the window edges when camera is clamped. */
 export const VIEW_PADDING_PX = 29;
