@@ -2,7 +2,7 @@ import { Container, Graphics, Text, TextStyle } from 'pixi.js';
 import type { Application } from 'pixi.js';
 import { Globals } from '../game/Globals';
 import { getLastName, setLastName, sanitizeName } from '../utils/storage';
-import { fetchScores, qualifiesForLeaderboard, submitScore } from '../utils/leaderboardApi';
+import { fetchScores, qualifiesForLeaderboard, submitScore, hasScoreRun } from '../utils/leaderboardApi';
 import { formatScore } from '../utils/format';
 import { ScoreSavePrompt } from '../ui/scoreSavePrompt';
 import { addButtonPressJuice } from '../game/Juice';
@@ -159,6 +159,8 @@ export class GameOverScene extends Container {
     }
 
     if (Globals.score <= 0) return;
+    // Can't submit without a server-issued run token.
+    if (!hasScoreRun()) return;
 
     void (async () => {
       let shouldPrompt = true;
@@ -224,15 +226,19 @@ export class GameOverScene extends Container {
     this.updateLayout();
 
     try {
-      await submitScore(Globals.score, name);
+      await submitScore(Globals.score, name, Globals.scoreMultiplier);
       setLastName(name);
       if (token !== this.promptToken) return;
       this.finishPrompt(`Saved as ${sanitizeName(name)}`);
     } catch {
       if (token !== this.promptToken) return;
       this.statusText.text = 'Couldn’t save — try again';
-      this.setButtonsVisible(false);
-      this.prompt.show(Globals.score, getLastName() || name, Globals.score >= Globals.highScore);
+      if (hasScoreRun()) {
+        this.setButtonsVisible(false);
+        this.prompt.show(Globals.score, getLastName() || name, Globals.score >= Globals.highScore);
+      } else {
+        this.setButtonsVisible(true);
+      }
       this.updateLayout();
     }
   }

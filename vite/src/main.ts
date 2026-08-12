@@ -3,6 +3,7 @@ import { Globals, resetForNewGame } from './game/Globals';
 import { getSound, getMusic, getHighScore, setHighScore, getLowPowerMode, getAntialias } from './utils/storage';
 import { isCoarsePointerMobile, setupMobileChrome } from './utils/landscape';
 import { audioManager } from './audio/AudioManager';
+import { startScoreRun } from './utils/leaderboardApi';
 import { TitleScene } from './scenes/TitleScene';
 import { GameOverScene } from './scenes/GameOverScene';
 import { LeaderboardScene } from './scenes/LeaderboardScene';
@@ -69,6 +70,7 @@ async function init(): Promise<void> {
     () => {
       resetForNewGame();
       audioManager.setMusicScene('game');
+      void startScoreRun();
       switchTo(skyScene);
     },
     () => showLeaderboardOverlay(),
@@ -81,6 +83,7 @@ async function init(): Promise<void> {
       hideGameOverOverlay();
       resetForNewGame();
       audioManager.setMusicScene('game');
+      void startScoreRun();
       skyScene.start();
       currentScene = skyScene;
     },

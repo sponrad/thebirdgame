@@ -99,7 +99,8 @@ export class SkyScene extends Container {
   private planeTexture!: Texture;
   private exhaustTexture!: Texture;
   private tickerBound = () => this.tick();
-  private pointerDown = false;
+  /** Active touch/mouse pointers → which half of the screen they're on. */
+  private activePointers = new Map<number, 'left' | 'right'>();
   private prevPlaneX = 0;
   private prevPlaneY = 0;
   private camX = 0;
@@ -284,9 +285,12 @@ export class SkyScene extends Container {
 
     this.app.stage.eventMode = 'static';
     this.app.stage.hitArea = this.app.screen;
+    this.activePointers.clear();
+    this.plane.setInputPointer(false, false);
     this.app.stage.on('pointerdown', this.onPointerDown, this);
     this.app.stage.on('pointerup', this.onPointerUp, this);
     this.app.stage.on('pointerupoutside', this.onPointerUp, this);
+    this.app.stage.on('pointercancel', this.onPointerUp, this);
     this.app.stage.on('pointermove', this.onPointerMove, this);
     window.removeEventListener('keydown', this.onDebugToggleKeyDown);
     window.addEventListener('keydown', this.onDebugToggleKeyDown);
@@ -299,7 +303,9 @@ export class SkyScene extends Container {
     this.app.stage.off('pointerdown', this.onPointerDown, this);
     this.app.stage.off('pointerup', this.onPointerUp, this);
     this.app.stage.off('pointerupoutside', this.onPointerUp, this);
+    this.app.stage.off('pointercancel', this.onPointerUp, this);
     this.app.stage.off('pointermove', this.onPointerMove, this);
+    this.activePointers.clear();
     this.plane.setInputPointer(false, false);
     // Draw above the game-over dim so hitboxes stay readable.
     this.bringDebugOverlayToFront();
@@ -321,7 +327,9 @@ export class SkyScene extends Container {
     this.app.stage.off('pointerdown', this.onPointerDown, this);
     this.app.stage.off('pointerup', this.onPointerUp, this);
     this.app.stage.off('pointerupoutside', this.onPointerUp, this);
+    this.app.stage.off('pointercancel', this.onPointerUp, this);
     this.app.stage.off('pointermove', this.onPointerMove, this);
+    this.activePointers.clear();
     this.plane.setInputPointer(false, false);
     window.removeEventListener('keydown', this.onDebugToggleKeyDown);
     if (this.debugOverlay.parent && this.debugOverlay.parent !== this) {
@@ -385,22 +393,35 @@ export class SkyScene extends Container {
     }
   }
 
-  private onPointerDown = (e: { global: { x: number } }): void => {
+  private sideForX(x: number): 'left' | 'right' {
+    return x < this.app.screen.width / 2 ? 'left' : 'right';
+  }
+
+  private syncPointerInput(): void {
+    let left = false;
+    let right = false;
+    for (const side of this.activePointers.values()) {
+      if (side === 'left') left = true;
+      else right = true;
+    }
+    this.plane.setInputPointer(left, right);
+  }
+
+  private onPointerDown = (e: { pointerId: number; global: { x: number } }): void => {
     if (!Globals.inGame) return;
-    this.pointerDown = true;
-    const mid = this.app.screen.width / 2;
-    this.plane.setInputPointer(e.global.x < mid, e.global.x >= mid);
+    this.activePointers.set(e.pointerId, this.sideForX(e.global.x));
+    this.syncPointerInput();
   };
 
-  private onPointerUp = (): void => {
-    this.pointerDown = false;
-    this.plane.setInputPointer(false, false);
+  private onPointerUp = (e: { pointerId: number }): void => {
+    this.activePointers.delete(e.pointerId);
+    this.syncPointerInput();
   };
 
-  private onPointerMove = (e: { global: { x: number } }): void => {
-    if (!Globals.inGame || !this.pointerDown) return;
-    const mid = this.app.screen.width / 2;
-    this.plane.setInputPointer(e.global.x < mid, e.global.x >= mid);
+  private onPointerMove = (e: { pointerId: number; global: { x: number } }): void => {
+    if (!Globals.inGame || !this.activePointers.has(e.pointerId)) return;
+    this.activePointers.set(e.pointerId, this.sideForX(e.global.x));
+    this.syncPointerInput();
   };
 
   /** Distance from segment (x1,y1)->(x2,y2) to point (px,py). Avoids tunneling when plane is fast. */
