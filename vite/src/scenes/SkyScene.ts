@@ -25,6 +25,7 @@ import {
   BALLOON_HITBOX_CENTER_Y_FACTOR,
   BALLOON_HITBOX_RADIUS_X_FACTOR,
   BALLOON_HITBOX_RADIUS_Y_FACTOR,
+  BALLOON_POP_CONFETTI_COUNT,
   BIRD_SPAWN_INTERVAL,
   BIRD_SPAWN_CORNER_BUFFER,
   BIRD_DEAD_DESPAWN_MARGIN,
@@ -92,6 +93,9 @@ export class SkyScene extends Container {
   private camVelY = 0;
   private static COLLISION_ALPHA_THRESHOLD = 12;
   private static SWEEP_SAMPLES = 5;
+  /** Sample every Nth opaque pixel for pixel-perfect checks (2 ≈ half the work). */
+  private static COLLISION_PIXEL_STRIDE = 2;
+  private readonly isMobile = isCoarsePointerMobile();
   private debugOverlay!: Graphics;
   private debugCollisionEnabled = false;
   private debugBirdCollisionChecks: Array<{ bird: Bird; hit: boolean }> = [];
@@ -161,7 +165,7 @@ export class SkyScene extends Container {
     this.multiplierLayer = new Container();
     this.worldContainer.addChild(this.multiplierLayer);
 
-    this.confetti = new ConfettiSystem();
+    this.confetti = new ConfettiSystem(this.isMobile ? 36 : BALLOON_POP_CONFETTI_COUNT);
     this.worldContainer.addChild(this.confetti.view);
     // Warm GPU particle path during boot (before first in-game pop).
     this.confetti.warm();
@@ -301,8 +305,11 @@ export class SkyScene extends Container {
   }
 
   private drawCollisionDebug(): void {
+    if (!this.debugCollisionEnabled) {
+      this.debugOverlay.clear();
+      return;
+    }
     this.debugOverlay.clear();
-    if (!this.debugCollisionEnabled) return;
 
     this.drawSpriteHitboxOutline(this.debugOverlay, this.plane, 0x33ff66, 1, PLANE_BIRD_COLLISION_INSET);
     for (const entry of this.debugBirdCollisionChecks) {
@@ -373,7 +380,7 @@ export class SkyScene extends Container {
         x,
         y,
         () => this.plane.getWorldPosition(),
-        () => this.birds.filter((b) => b.isAlive()),
+        () => this.birds,
         (b) => this.onBirdDeath(b)
       );
       this.birdLayer.addChild(bird);
@@ -389,9 +396,7 @@ export class SkyScene extends Container {
     const pad = VIEW_PADDING_PX;
     const usableW = Math.max(1, sw - pad * 2);
     const usableH = Math.max(1, sh - pad * 2);
-    // Desktop: height-based zoom (original feel on wide monitors).
-    // Mobile: longer-axis zoom so landscape isn't tiny vs portrait.
-    const mobile = isCoarsePointerMobile();
+    const mobile = this.isMobile;
     const refPx = mobile ? Math.max(usableW, usableH) : usableH;
     const scale =
       (refPx / (CAMERA_VIEW_HALF_EXTENT * 2)) * (mobile ? CAMERA_MOBILE_ZOOM : 1);
@@ -513,18 +518,27 @@ export class SkyScene extends Container {
 
     const px = this.plane.x;
     const py = this.plane.y;
+    const pixelStride = this.isMobile ? SkyScene.COLLISION_PIXEL_STRIDE : 1;
+    const planeHalf = Math.max(Math.abs(this.plane.width), Math.abs(this.plane.height)) * 0.55;
     for (let i = this.birds.length - 1; i >= 0; i--) {
-      const bird = this.birds[i];
+      const bird = this.birds[i]!;
       if (!bird.isAlive()) continue;
+      const birdHalf = Math.max(Math.abs(bird.width), Math.abs(bird.height)) * 0.55;
+      const gate = planeHalf + birdHalf;
+      const dx = bird.x - px;
+      const dy = bird.y - py;
+      // Cheap circle gate before expensive pixel-perfect.
+      if (dx * dx + dy * dy > gate * gate) continue;
       const isHit = pixelPerfectOverlap(
         this.plane,
         bird,
         SkyScene.COLLISION_ALPHA_THRESHOLD,
         0,
         0,
-        PLANE_BIRD_COLLISION_INSET
+        PLANE_BIRD_COLLISION_INSET,
+        pixelStride
       );
-      this.debugBirdCollisionChecks.push({ bird, hit: isHit });
+      if (this.debugCollisionEnabled) this.debugBirdCollisionChecks.push({ bird, hit: isHit });
       if (isHit) {
         Globals.inGame = false;
         audioManager.playPlayerDead();
@@ -535,16 +549,17 @@ export class SkyScene extends Container {
       }
     }
 
+    const sweepSamples = this.isMobile ? 3 : SkyScene.SWEEP_SAMPLES;
     for (let i = this.balloons.length - 1; i >= 0; i--) {
-      const b = this.balloons[i];
+      const b = this.balloons[i]!;
       const bx = b.getWorldPosition().x;
       const by = b.getWorldPosition().y;
       const dist = this.segmentToPointDistance(this.prevPlaneX, this.prevPlaneY, px, py, bx, by);
       let hitBalloon = false;
       if (dist < BALLOON_COLLECT_RADIUS) {
         const hb = this.getBalloonHitbox(b);
-        for (let s = 0; s < SkyScene.SWEEP_SAMPLES; s++) {
-          const t = s / (SkyScene.SWEEP_SAMPLES - 1);
+        for (let s = 0; s < sweepSamples; s++) {
+          const t = sweepSamples === 1 ? 0 : s / (sweepSamples - 1);
           const sampleX = this.prevPlaneX + (px - this.prevPlaneX) * t;
           const sampleY = this.prevPlaneY + (py - this.prevPlaneY) * t;
           const offsetX = sampleX - px;
@@ -557,9 +572,12 @@ export class SkyScene extends Container {
             hb.ry,
             SkyScene.COLLISION_ALPHA_THRESHOLD,
             offsetX,
-            offsetY
+            offsetY,
+            pixelStride
           );
-          this.debugBalloonSweepPoints.push({ x: sampleX, y: sampleY, hit: sampleHit });
+          if (this.debugCollisionEnabled) {
+            this.debugBalloonSweepPoints.push({ x: sampleX, y: sampleY, hit: sampleHit });
+          }
           if (sampleHit) {
             hitBalloon = true;
             break;
@@ -575,8 +593,9 @@ export class SkyScene extends Container {
         for (const bird of this.birds) {
           if (bird.isDead()) continue;
           const pos = bird.getWorldPosition();
-          const d = Math.hypot(pos.x - blastX, pos.y - blastY);
-          if (d < explosionRadius) {
+          const ddx = pos.x - blastX;
+          const ddy = pos.y - blastY;
+          if (ddx * ddx + ddy * ddy < explosionRadius * explosionRadius) {
             bird.hit({ x: blastX, y: blastY });
             anyBirdHit = true;
           }

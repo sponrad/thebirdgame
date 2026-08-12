@@ -43,6 +43,8 @@ export type OnBirdDeath = (bird: Bird) => void;
  * hit() → dead sprite, remove from list, add score, spawn multiplier (via callback).
  */
 export class Bird extends Sprite {
+  private static nextSepId = 1;
+  private readonly sepId: number;
   private flapTextures: Texture[];
   private deadTexture: Texture;
   private getPlanePosition: GetPlanePosition;
@@ -72,6 +74,7 @@ export class Bird extends Sprite {
     onDeath: OnBirdDeath
   ) {
     super(flapTextures[0]);
+    this.sepId = Bird.nextSepId++;
     this.flapTextures = flapTextures;
     this.deadTexture = deadTexture;
     this.anchor.set(0.5, 0.5);
@@ -100,16 +103,19 @@ export class Bird extends Sprite {
     let cx = 0;
     let cy = 0;
     const others = this.getOtherBirds();
-    const start = Math.floor(Math.random() * 2); // 0 or 1, like Unity j = Random.Range(0,1)
+    const r2 = BIRD_ENEMY_DISTANCE_RADIUS * BIRD_ENEMY_DISTANCE_RADIUS;
+    // Alternate parity by id so we keep O(n/2) checks without Math.random each frame.
+    const start = (this.sepId & 1) as 0 | 1;
     for (let j = start; j < others.length; j += 2) {
-      const e = others[j];
-      if (e === this) continue;
+      const e = others[j]!;
+      if (e === this || !e.isAlive()) continue;
       const dx = e.x - this.x;
       const dy = e.y - this.y;
-      const dist = Math.hypot(dx, dy);
-      if (dist <= BIRD_ENEMY_DISTANCE_RADIUS && dist > 0) {
-        cx -= dx / dist;
-        cy -= dy / dist;
+      const distSq = dx * dx + dy * dy;
+      if (distSq <= r2 && distSq > 0) {
+        const inv = 1 / Math.sqrt(distSq);
+        cx -= dx * inv;
+        cy -= dy * inv;
       }
     }
     return { x: cx * 0.5, y: cy * 0.5 };
@@ -211,9 +217,8 @@ export class Bird extends Sprite {
     this.x = Math.max(LEVEL_BOUNDS.minX, Math.min(LEVEL_BOUNDS.maxX, this.x));
     this.y = Math.max(LEVEL_BOUNDS.minY, Math.min(LEVEL_BOUNDS.maxY, this.y));
 
-    const deg = (this.rotation * 180) / Math.PI;
-    const normalized = ((deg % 360) + 360) % 360;
-    this.scale.y = normalized > 90 && normalized < 270 ? -BIRD_SCALE_ALIVE : BIRD_SCALE_ALIVE;
+    // Facing left (cos < 0) → flip sprite vertically vs Unity mid-flight.
+    this.scale.y = Math.cos(this.rotation) < 0 ? -BIRD_SCALE_ALIVE : BIRD_SCALE_ALIVE;
     this.scale.x = BIRD_SCALE_ALIVE;
 
     if (this.inFlapCycle) {

@@ -1,7 +1,7 @@
 import { Application } from 'pixi.js';
 import { Globals, resetForNewGame } from './game/Globals';
 import { getSound, getHighScore, setHighScore } from './utils/storage';
-import { setupMobileChrome } from './utils/landscape';
+import { isCoarsePointerMobile, setupMobileChrome } from './utils/landscape';
 import { audioManager } from './audio/AudioManager';
 import { TitleScene } from './scenes/TitleScene';
 import { GameOverScene } from './scenes/GameOverScene';
@@ -17,14 +17,18 @@ async function init(): Promise<void> {
   Globals.highScore = getHighScore();
 
   const app = new Application();
+  const mobile = isCoarsePointerMobile();
+  // Phones: fewer pixels + no MSAA — biggest GPU/thermal win.
+  const resolution = Math.min(window.devicePixelRatio || 1, mobile ? 1.25 : 2);
 
   await app.init({
     canvas: document.querySelector('#game') as HTMLCanvasElement,
     resizeTo: window,
     backgroundColor: 0x87ceeb,
-    antialias: true,
+    antialias: !mobile,
     autoDensity: true,
-    resolution: Math.min(window.devicePixelRatio || 1, 2),
+    resolution,
+    powerPreference: mobile ? 'low-power' : 'high-performance',
   });
 
   // Kill browser text-selection / callout gestures on the game canvas.

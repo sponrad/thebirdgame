@@ -121,6 +121,7 @@ function getOpaquePixels(texture: Texture, alphaThreshold: number, insetPixels =
  * Pixel-perfect overlap using alpha channel.
  * Runs broad-phase AABB first, then per-pixel checks from `primary` into `secondary`.
  * `insetPixels` erodes primary's opaque mask inward (forgiveness without changing secondary).
+ * `pixelStride` > 1 skips opaque samples (cheaper, slightly less precise).
  */
 export function pixelPerfectOverlap(
   primary: Sprite,
@@ -128,7 +129,8 @@ export function pixelPerfectOverlap(
   alphaThreshold = 10,
   primaryWorldOffsetX = 0,
   primaryWorldOffsetY = 0,
-  insetPixels = 0
+  insetPixels = 0,
+  pixelStride = 1
 ): boolean {
   const a = primary.getBounds();
   const b = secondary.getBounds();
@@ -139,8 +141,10 @@ export function pixelPerfectOverlap(
 
   const opaquePixels = getOpaquePixels(primary.texture, alphaThreshold, insetPixels);
   const frame = primary.texture.frame;
+  const stride = Math.max(1, pixelStride | 0);
 
-  for (const pixel of opaquePixels) {
+  for (let i = 0; i < opaquePixels.length; i += stride) {
+    const pixel = opaquePixels[i]!;
     const localX = pixel.x - primary.anchor.x * frame.width + 0.5;
     const localY = pixel.y - primary.anchor.y * frame.height + 0.5;
     primary.worldTransform.apply({ x: localX, y: localY }, tmpWorldPoint);
@@ -219,7 +223,8 @@ export function spriteOpaquePixelsOverlapEllipse(
   radiusY: number,
   alphaThreshold = 10,
   primaryWorldOffsetX = 0,
-  primaryWorldOffsetY = 0
+  primaryWorldOffsetY = 0,
+  pixelStride = 1
 ): boolean {
   if (radiusX <= 0 || radiusY <= 0) return false;
 
@@ -237,8 +242,10 @@ export function spriteOpaquePixelsOverlapEllipse(
   const frame = primary.texture.frame;
   const invRx2 = 1 / (radiusX * radiusX);
   const invRy2 = 1 / (radiusY * radiusY);
+  const stride = Math.max(1, pixelStride | 0);
 
-  for (const pixel of opaquePixels) {
+  for (let i = 0; i < opaquePixels.length; i += stride) {
+    const pixel = opaquePixels[i]!;
     const localX = pixel.x - primary.anchor.x * frame.width + 0.5;
     const localY = pixel.y - primary.anchor.y * frame.height + 0.5;
     primary.worldTransform.apply({ x: localX, y: localY }, tmpWorldPoint);

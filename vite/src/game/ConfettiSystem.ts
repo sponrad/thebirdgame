@@ -14,8 +14,6 @@ const CONFETTI_COLORS = [
 ];
 
 /** Enough for several overlapping pops without allocating mid-game. */
-const POOL_SIZE = BALLOON_POP_CONFETTI_COUNT * 5;
-
 type Bit = {
   particle: Particle;
   vx: number;
@@ -37,8 +35,10 @@ export class ConfettiSystem {
   private free: Bit[] = [];
   private live: Bit[] = [];
   private warmed = false;
+  private readonly burstCount: number;
 
-  constructor() {
+  constructor(burstCount = BALLOON_POP_CONFETTI_COUNT) {
+    this.burstCount = Math.max(8, burstCount);
     this.view = new ParticleContainer({
       texture: Texture.WHITE,
       dynamicProperties: {
@@ -49,7 +49,8 @@ export class ConfettiSystem {
       },
     });
 
-    for (let i = 0; i < POOL_SIZE; i++) {
+    const poolSize = this.burstCount * 4;
+    for (let i = 0; i < poolSize; i++) {
       const bit = this.makeBit();
       // Resident in the GPU buffer from the start.
       this.view.addParticle(bit.particle);
@@ -91,7 +92,7 @@ export class ConfettiSystem {
     this.warmed = true;
 
     // Briefly activate a full burst-worth at alpha 0 so dynamic attrs get a real upload.
-    const n = Math.min(BALLOON_POP_CONFETTI_COUNT, this.free.length);
+    const n = Math.min(this.burstCount, this.free.length);
     const warmed: Bit[] = [];
     for (let i = 0; i < n; i++) {
       const bit = this.free.pop()!;
@@ -125,7 +126,7 @@ export class ConfettiSystem {
 
     const stunR = Math.max(1, radius);
 
-    for (let i = 0; i < BALLOON_POP_CONFETTI_COUNT; i++) {
+    for (let i = 0; i < this.burstCount; i++) {
       const bit = this.free.pop();
       if (!bit) break; // pool exhausted — skip rather than allocate mid-frame
       const p = bit.particle;
