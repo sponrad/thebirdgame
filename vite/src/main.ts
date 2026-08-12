@@ -125,12 +125,23 @@ async function init(): Promise<void> {
     }
   }
 
-  window.addEventListener('resize', () => {
+  const layoutAll = (): void => {
     if (skyScene.parent) skyScene.updateLayout();
     if (titleScene.parent) titleScene.updateLayout();
     if (gameOverScene.parent) gameOverScene.updateLayout();
     if (leaderboardScene.parent) leaderboardScene.updateLayout();
+  };
+
+  // iOS often settles size after orientationchange; resize alone can miss a frame.
+  window.addEventListener('resize', layoutAll);
+  window.addEventListener('orientationchange', () => {
+    requestAnimationFrame(() => {
+      layoutAll();
+      window.setTimeout(layoutAll, 150);
+    });
   });
+  window.visualViewport?.addEventListener('resize', layoutAll);
+  app.renderer.on('resize', layoutAll);
 
   hideBootLoader();
 }

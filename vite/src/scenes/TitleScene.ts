@@ -359,55 +359,101 @@ export class TitleScene extends Container {
   updateLayout(): void {
     const w = this.app.screen.width;
     const h = this.app.screen.height;
+    // Phones in landscape (and other short viewports): keep checks on a bottom row.
+    const compact = h < 520;
 
     this.hitArea = this.app.screen;
 
     this.clipMask.clear();
     this.clipMask.rect(0, 0, w, h).fill({ color: 0xffffff });
 
+    const tw = this.splash.texture.width || 1;
     const th = this.splash.texture.height || 1;
-    // Fit height exactly; center horizontally; sides may spill and clip.
-    const scale = h / th;
-    this.splash.scale.set(scale);
+    // Cover the screen; crop overflow (same idea as before, works in landscape too).
+    const cover = Math.max(w / tw, h / th);
+    this.splash.scale.set(cover);
     this.splash.x = w / 2;
     this.splash.y = h / 2;
 
-    this.title.x = w / 2;
-    this.title.y = h * 0.38;
     this.title.scale.set(Math.min(1.15, Math.max(0.7, w / 900)));
+    this.title.x = w / 2;
+    this.title.y = compact ? Math.max(32, h * 0.14) : h * 0.38;
 
+    this.subtitle.scale.set(1);
     this.subtitle.x = w / 2;
-    this.subtitle.y = this.title.y + 34 * this.title.scale.y;
+    this.subtitle.y = this.title.y + (compact ? 40 : 46) * this.title.scale.y;
 
-    const menuY = this.subtitle.y + 70;
+    const checksReserve = compact ? 56 : 0;
+    const menuFloor = h - checksReserve;
+    const startGap = compact ? 64 : 58;
+    const secondaryGap = compact ? 56 : 50;
+    let menuY = compact
+      ? Math.min(this.subtitle.y + 62, menuFloor * 0.4)
+      : this.subtitle.y + 70;
+
+    // Keep Start → Leaderboard → Fullscreen above the bottom check row.
+    if (compact) {
+      const menuBlockH = this.fullscreenBtn ? startGap + secondaryGap : startGap;
+      const maxStartY = menuFloor - 24 - menuBlockH;
+      if (menuY > maxStartY) menuY = Math.max(this.subtitle.y + 48, maxStartY);
+    }
+
     this.tapPrompt.x = w / 2;
     this.tapPrompt.y = menuY;
 
+    this.startBtn.scale.set(1);
     this.startBtn.x = w / 2;
     this.startBtn.y = menuY;
 
+    this.leaderboardBtn.scale.set(1);
     this.leaderboardBtn.x = w / 2;
-    this.leaderboardBtn.y = this.startBtn.y + 58;
+    this.leaderboardBtn.y = this.startBtn.y + startGap;
 
-    let y = this.leaderboardBtn.y + 50;
+    let y = this.leaderboardBtn.y + secondaryGap;
     if (this.fullscreenBtn) {
+      this.fullscreenBtn.scale.set(1);
       this.fullscreenBtn.x = w / 2;
       this.fullscreenBtn.y = y;
-      y += 50;
+      y += secondaryGap;
     }
 
     this.installTip.style.wordWrapWidth = Math.min(320, w - 40);
+    this.installTip.scale.set(1);
     this.installTip.x = w / 2;
-    this.installTip.y = y + 8;
-    if (this.installTip.visible) y += 48;
+    if (this.installTip.visible) {
+      // Keep tip above the bottom check row in compact mode.
+      this.installTip.y = compact ? Math.min(y + 6, menuFloor - 28) : y + 8;
+      if (!compact) y += 48;
+    }
 
-    this.soundRow.x = w / 2 - 28;
-    this.soundRow.y = y + 2;
+    this.layoutCheckRows(w, h, y, compact);
+  }
 
-    this.lowPowerRow.x = w / 2 - 28;
-    this.lowPowerRow.y = this.soundRow.y + 34;
+  /** Portrait: stacked under menu. Landscape/short: one row along the bottom. */
+  private layoutCheckRows(w: number, h: number, stackY: number, compact: boolean): void {
+    const rows = [this.soundRow, this.lowPowerRow, this.antialiasRow];
+    for (const row of rows) row.scale.set(1);
 
-    this.antialiasRow.x = w / 2 - 28;
-    this.antialiasRow.y = this.lowPowerRow.y + 34;
+    if (!compact) {
+      this.soundRow.x = w / 2 - 28;
+      this.soundRow.y = stackY + 2;
+      this.lowPowerRow.x = w / 2 - 28;
+      this.lowPowerRow.y = this.soundRow.y + 34;
+      this.antialiasRow.x = w / 2 - 28;
+      this.antialiasRow.y = this.lowPowerRow.y + 34;
+      return;
+    }
+
+    const gap = Math.min(40, Math.max(20, w * 0.045));
+    const widths = rows.map((row) => Math.max(1, row.getLocalBounds().width));
+    const total = widths.reduce((a, b) => a + b, 0) + gap * (rows.length - 1);
+    let x = (w - total) / 2;
+    const y = h - 30;
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i]!;
+      row.x = x;
+      row.y = y;
+      x += widths[i]! + gap;
+    }
   }
 }
