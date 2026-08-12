@@ -64,7 +64,8 @@ async function init(): Promise<void> {
       skyScene.start();
       currentScene = skyScene;
     },
-    () => showLeaderboardOverlay()
+    () => showLeaderboardOverlay(),
+    () => switchTo(titleScene)
   );
 
   const leaderboardScene = new LeaderboardScene(app, () => hideLeaderboardOverlay());

@@ -40,6 +40,7 @@ export class GameOverScene extends Container {
   private app: Application;
   private onPlayAgain: () => void;
   private onLeaderboard: () => void;
+  private onTitle: () => void;
   private prompt: ScoreSavePrompt;
   private dim!: Graphics;
   private title!: Text;
@@ -48,13 +49,20 @@ export class GameOverScene extends Container {
   private statusText!: Text;
   private playAgainBtn!: Text;
   private leaderboardBtn!: Text;
+  private titleBtn!: Text;
   private promptToken = 0;
 
-  constructor(app: Application, onPlayAgain: () => void, onLeaderboard: () => void) {
+  constructor(
+    app: Application,
+    onPlayAgain: () => void,
+    onLeaderboard: () => void,
+    onTitle: () => void
+  ) {
     super();
     this.app = app;
     this.onPlayAgain = onPlayAgain;
     this.onLeaderboard = onLeaderboard;
+    this.onTitle = onTitle;
     this.prompt = new ScoreSavePrompt({
       onSave: (name) => {
         void this.saveScore(name);
@@ -94,6 +102,13 @@ export class GameOverScene extends Container {
     this.leaderboardBtn.cursor = 'pointer';
     this.leaderboardBtn.on('pointerdown', () => this.onLeaderboard());
     this.addChild(this.leaderboardBtn);
+
+    this.titleBtn = new Text({ text: 'Title', style: BUTTON_STYLE });
+    this.titleBtn.anchor.set(0.5);
+    this.titleBtn.eventMode = 'static';
+    this.titleBtn.cursor = 'pointer';
+    this.titleBtn.on('pointerdown', () => this.handleTitle());
+    this.addChild(this.titleBtn);
 
     this.updateLayout();
   }
@@ -156,6 +171,9 @@ export class GameOverScene extends Container {
 
     this.leaderboardBtn.x = w / 2;
     this.leaderboardBtn.y = buttonsY + 42;
+
+    this.titleBtn.x = w / 2;
+    this.titleBtn.y = buttonsY + 84;
   }
 
   private async saveScore(name: string): Promise<void> {
@@ -189,12 +207,19 @@ export class GameOverScene extends Container {
   private setButtonsVisible(visible: boolean): void {
     this.playAgainBtn.visible = visible;
     this.leaderboardBtn.visible = visible;
+    this.titleBtn.visible = visible;
     this.playAgainBtn.eventMode = visible ? 'static' : 'none';
     this.leaderboardBtn.eventMode = visible ? 'static' : 'none';
+    this.titleBtn.eventMode = visible ? 'static' : 'none';
   }
 
   private handlePlayAgain(): void {
     this.hidePrompt();
     this.onPlayAgain();
+  }
+
+  private handleTitle(): void {
+    this.hidePrompt();
+    this.onTitle();
   }
 }
