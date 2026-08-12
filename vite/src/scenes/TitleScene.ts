@@ -55,6 +55,8 @@ const SOUND_LABEL_STYLE = new TextStyle({
   fontFamily: 'Arial, Helvetica, sans-serif',
   fontSize: 18,
   fill: 0x1a1a1a,
+  fontWeight: 'bold',
+  stroke: { color: 0xffffff, width: 4, join: 'round' },
 });
 
 const TAP_PROMPT_STYLE = new TextStyle({
