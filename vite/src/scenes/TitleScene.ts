@@ -61,7 +61,7 @@ const TAP_PROMPT_STYLE = new TextStyle({
   fontSize: 22,
   fill: 0x1a1a1a,
   fontWeight: 'bold',
-  stroke: { color: 0xffffff, width: 4 },
+  stroke: { color: 0xffffff, width: 4, join: 'round' },
 });
 
 const TIP_STYLE = new TextStyle({
@@ -71,7 +71,7 @@ const TIP_STYLE = new TextStyle({
   align: 'center',
   wordWrap: true,
   wordWrapWidth: 280,
-  stroke: { color: 0xffffff, width: 3 },
+  stroke: { color: 0xffffff, width: 3, join: 'round' },
 });
 
 function makeButton(

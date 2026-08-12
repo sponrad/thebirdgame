@@ -11,21 +11,21 @@ const TITLE_STYLE = new TextStyle({
   fontSize: 40,
   fill: 0x1a1a1a,
   fontWeight: 'bold',
-  stroke: { color: 0xffffff, width: 5 },
+  stroke: { color: 0xffffff, width: 5, join: 'round' },
 });
 
 const SCORE_STYLE = new TextStyle({
   fontFamily: 'sans-serif',
   fontSize: 28,
   fill: 0x1a1a1a,
-  stroke: { color: 0xffffff, width: 4 },
+  stroke: { color: 0xffffff, width: 4, join: 'round' },
 });
 
 const STATUS_STYLE = new TextStyle({
   fontFamily: 'sans-serif',
   fontSize: 20,
   fill: 0x1a1a1a,
-  stroke: { color: 0xffffff, width: 3 },
+  stroke: { color: 0xffffff, width: 3, join: 'round' },
 });
 
 const BUTTON_STYLE = new TextStyle({
@@ -33,7 +33,7 @@ const BUTTON_STYLE = new TextStyle({
   fontSize: 26,
   fill: 0x1a1a1a,
   fontWeight: 'bold',
-  stroke: { color: 0xffffff, width: 4 },
+  stroke: { color: 0xffffff, width: 4, join: 'round' },
 });
 
 /** Overlay shown on top of a frozen SkyScene. */
