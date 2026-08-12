@@ -9,7 +9,7 @@ import {
 } from 'pixi.js';
 import type { Application } from 'pixi.js';
 import { Globals } from '../game/Globals';
-import { setSound } from '../utils/storage';
+import { setSound, setLowPowerMode, setAntialias } from '../utils/storage';
 import { audioManager } from '../audio/AudioManager';
 import { canFullscreen, isFullscreen, toggleFullscreen, needsHomeScreenFullscreen } from '../utils/landscape';
 
@@ -86,6 +86,27 @@ function makeButton(
   return btn;
 }
 
+function makeCheckRow(label: string): {
+  row: Container;
+  bg: Graphics;
+  mark: Graphics;
+} {
+  const row = new Container();
+  row.eventMode = 'static';
+  row.cursor = 'pointer';
+
+  const bg = new Graphics();
+  const mark = new Graphics();
+  row.addChild(bg);
+  row.addChild(mark);
+
+  const text = new Text({ text: label, style: SOUND_LABEL_STYLE });
+  text.x = 28;
+  text.y = -10;
+  row.addChild(text);
+  return { row, bg, mark };
+}
+
 export class TitleScene extends Container {
   private app: Application;
   private onPlay: () => void;
@@ -102,6 +123,12 @@ export class TitleScene extends Container {
   private soundRow!: Container;
   private soundCheckBg!: Graphics;
   private soundCheckMark!: Graphics;
+  private lowPowerRow!: Container;
+  private lowPowerCheckBg!: Graphics;
+  private lowPowerCheckMark!: Graphics;
+  private antialiasRow!: Container;
+  private antialiasCheckBg!: Graphics;
+  private antialiasCheckMark!: Graphics;
   private menuReady = false;
   private priming = false;
 
@@ -185,23 +212,30 @@ export class TitleScene extends Container {
     this.installTip.visible = false;
     this.addChild(this.installTip);
 
-    this.soundRow = new Container();
-    this.soundRow.eventMode = 'static';
-    this.soundRow.cursor = 'pointer';
+    const sound = makeCheckRow('Sound');
+    this.soundRow = sound.row;
+    this.soundCheckBg = sound.bg;
+    this.soundCheckMark = sound.mark;
     this.soundRow.on('pointerdown', this.toggleSound, this);
-
-    this.soundCheckBg = new Graphics();
-    this.soundCheckMark = new Graphics();
-    this.soundRow.addChild(this.soundCheckBg);
-    this.soundRow.addChild(this.soundCheckMark);
-
-    const soundLabel = new Text({ text: 'Sound', style: SOUND_LABEL_STYLE });
-    soundLabel.x = 28;
-    soundLabel.y = -10;
-    this.soundRow.addChild(soundLabel);
     this.addChild(this.soundRow);
 
+    const lowPower = makeCheckRow('Low power mode');
+    this.lowPowerRow = lowPower.row;
+    this.lowPowerCheckBg = lowPower.bg;
+    this.lowPowerCheckMark = lowPower.mark;
+    this.lowPowerRow.on('pointerdown', this.toggleLowPower, this);
+    this.addChild(this.lowPowerRow);
+
+    const antialias = makeCheckRow('Antialiasing');
+    this.antialiasRow = antialias.row;
+    this.antialiasCheckBg = antialias.bg;
+    this.antialiasCheckMark = antialias.mark;
+    this.antialiasRow.on('pointerdown', this.toggleAntialias, this);
+    this.addChild(this.antialiasRow);
+
     this.redrawSoundCheck();
+    this.redrawLowPowerCheck();
+    this.redrawAntialiasCheck();
     this.updateLayout();
 
     // Desktop may already be primed after init; mobile needs a gesture first.
@@ -219,6 +253,8 @@ export class TitleScene extends Container {
     if (this.fullscreenBtn) this.fullscreenBtn.visible = false;
     this.installTip.visible = false;
     this.soundRow.visible = false;
+    this.lowPowerRow.visible = false;
+    this.antialiasRow.visible = false;
     this.tapPrompt.visible = true;
     this.tapPrompt.text = 'Tap to continue';
 
@@ -256,6 +292,8 @@ export class TitleScene extends Container {
       this.redrawFullscreenLabel();
     }
     this.soundRow.visible = true;
+    this.lowPowerRow.visible = true;
+    this.antialiasRow.visible = true;
     this.updateLayout();
   }
 
@@ -270,16 +308,28 @@ export class TitleScene extends Container {
   }
 
   private redrawSoundCheck(): void {
-    this.soundCheckBg.clear();
-    this.soundCheckBg.roundRect(-10, -10, 20, 20, 3).fill({ color: 0xffffff });
-    this.soundCheckBg.stroke({ color: 0x333333, width: 1.5 });
+    this.drawCheck(this.soundCheckBg, this.soundCheckMark, Globals.sound);
+  }
 
-    this.soundCheckMark.clear();
-    if (Globals.sound) {
-      this.soundCheckMark.moveTo(-5, 0);
-      this.soundCheckMark.lineTo(-1, 5);
-      this.soundCheckMark.lineTo(6, -5);
-      this.soundCheckMark.stroke({ color: 0x111111, width: 2.5, cap: 'round', join: 'round' });
+  private redrawLowPowerCheck(): void {
+    this.drawCheck(this.lowPowerCheckBg, this.lowPowerCheckMark, Globals.lowPowerMode);
+  }
+
+  private redrawAntialiasCheck(): void {
+    this.drawCheck(this.antialiasCheckBg, this.antialiasCheckMark, Globals.antialias);
+  }
+
+  private drawCheck(bg: Graphics, mark: Graphics, on: boolean): void {
+    bg.clear();
+    bg.roundRect(-10, -10, 20, 20, 3).fill({ color: 0xffffff });
+    bg.stroke({ color: 0x333333, width: 1.5 });
+
+    mark.clear();
+    if (on) {
+      mark.moveTo(-5, 0);
+      mark.lineTo(-1, 5);
+      mark.lineTo(6, -5);
+      mark.stroke({ color: 0x111111, width: 2.5, cap: 'round', join: 'round' });
     }
   }
 
@@ -288,6 +338,22 @@ export class TitleScene extends Container {
     Globals.sound = !Globals.sound;
     setSound(Globals.sound);
     this.redrawSoundCheck();
+  }
+
+  private toggleLowPower(): void {
+    Globals.lowPowerMode = !Globals.lowPowerMode;
+    setLowPowerMode(Globals.lowPowerMode);
+    this.redrawLowPowerCheck();
+    // Resolution / GPU powerPreference need a fresh WebGL context.
+    window.location.reload();
+  }
+
+  private toggleAntialias(): void {
+    Globals.antialias = !Globals.antialias;
+    setAntialias(Globals.antialias);
+    this.redrawAntialiasCheck();
+    // MSAA is fixed at context creation.
+    window.location.reload();
   }
 
   updateLayout(): void {
@@ -337,5 +403,11 @@ export class TitleScene extends Container {
 
     this.soundRow.x = w / 2 - 28;
     this.soundRow.y = y + 2;
+
+    this.lowPowerRow.x = w / 2 - 28;
+    this.lowPowerRow.y = this.soundRow.y + 34;
+
+    this.antialiasRow.x = w / 2 - 28;
+    this.antialiasRow.y = this.lowPowerRow.y + 34;
   }
 }

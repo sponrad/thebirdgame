@@ -6,6 +6,8 @@
 const KEY_SOUND = 'thebirdgame_sound';
 const KEY_HIGH_SCORE = 'thebirdgame_highScore';
 const KEY_LAST_NAME = 'thebirdgame_lastName';
+const KEY_LOW_POWER = 'thebirdgame_lowPower';
+const KEY_ANTIALIAS = 'thebirdgame_antialias';
 
 export const MAX_SCORES = 10;
 export const MAX_NAME_LEN = 12;
@@ -29,6 +31,44 @@ export function getSound(): boolean {
 export function setSound(on: boolean): void {
   try {
     localStorage.setItem(KEY_SOUND, on ? '1' : '0');
+  } catch {
+    // ignore
+  }
+}
+
+/** When unset, defaults to the device being a coarse-pointer phone/tablet. */
+export function getLowPowerMode(defaultOn: boolean): boolean {
+  try {
+    const v = localStorage.getItem(KEY_LOW_POWER);
+    if (v === null) return defaultOn;
+    return v === '1';
+  } catch {
+    return defaultOn;
+  }
+}
+
+export function setLowPowerMode(on: boolean): void {
+  try {
+    localStorage.setItem(KEY_LOW_POWER, on ? '1' : '0');
+  } catch {
+    // ignore
+  }
+}
+
+/** When unset, defaults to `defaultOn` (typically !lowPowerMode). */
+export function getAntialias(defaultOn: boolean): boolean {
+  try {
+    const v = localStorage.getItem(KEY_ANTIALIAS);
+    if (v === null) return defaultOn;
+    return v === '1';
+  } catch {
+    return defaultOn;
+  }
+}
+
+export function setAntialias(on: boolean): void {
+  try {
+    localStorage.setItem(KEY_ANTIALIAS, on ? '1' : '0');
   } catch {
     // ignore
   }

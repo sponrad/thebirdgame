@@ -1,6 +1,6 @@
 import { Application } from 'pixi.js';
 import { Globals, resetForNewGame } from './game/Globals';
-import { getSound, getHighScore, setHighScore } from './utils/storage';
+import { getSound, getHighScore, setHighScore, getLowPowerMode, getAntialias } from './utils/storage';
 import { isCoarsePointerMobile, setupMobileChrome } from './utils/landscape';
 import { audioManager } from './audio/AudioManager';
 import { TitleScene } from './scenes/TitleScene';
@@ -15,20 +15,22 @@ async function init(): Promise<void> {
 
   Globals.sound = getSound();
   Globals.highScore = getHighScore();
+  Globals.lowPowerMode = getLowPowerMode(isCoarsePointerMobile());
+  Globals.antialias = getAntialias(!Globals.lowPowerMode);
 
   const app = new Application();
-  const mobile = isCoarsePointerMobile();
-  // Phones: fewer pixels + no MSAA — biggest GPU/thermal win.
-  const resolution = Math.min(window.devicePixelRatio || 1, mobile ? 1.25 : 2);
+  const lowPower = Globals.lowPowerMode;
+  // Low power: fewer pixels + efficiency GPU hint. AA is independent.
+  const resolution = Math.min(window.devicePixelRatio || 1, lowPower ? 1.25 : 2);
 
   await app.init({
     canvas: document.querySelector('#game') as HTMLCanvasElement,
     resizeTo: window,
     backgroundColor: 0x87ceeb,
-    antialias: !mobile,
+    antialias: Globals.antialias,
     autoDensity: true,
     resolution,
-    powerPreference: mobile ? 'low-power' : 'high-performance',
+    powerPreference: lowPower ? 'low-power' : 'high-performance',
   });
 
   // Kill browser text-selection / callout gestures on the game canvas.

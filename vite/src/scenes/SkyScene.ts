@@ -96,6 +96,9 @@ export class SkyScene extends Container {
   /** Sample every Nth opaque pixel for pixel-perfect checks (2 ≈ half the work). */
   private static COLLISION_PIXEL_STRIDE = 2;
   private readonly isMobile = isCoarsePointerMobile();
+  private get lowPower(): boolean {
+    return Globals.lowPowerMode;
+  }
   private debugOverlay!: Graphics;
   private debugCollisionEnabled = false;
   private debugBirdCollisionChecks: Array<{ bird: Bird; hit: boolean }> = [];
@@ -165,7 +168,7 @@ export class SkyScene extends Container {
     this.multiplierLayer = new Container();
     this.worldContainer.addChild(this.multiplierLayer);
 
-    this.confetti = new ConfettiSystem(this.isMobile ? 36 : BALLOON_POP_CONFETTI_COUNT);
+    this.confetti = new ConfettiSystem(this.lowPower ? 36 : BALLOON_POP_CONFETTI_COUNT);
     this.worldContainer.addChild(this.confetti.view);
     // Warm GPU particle path during boot (before first in-game pop).
     this.confetti.warm();
@@ -518,7 +521,7 @@ export class SkyScene extends Container {
 
     const px = this.plane.x;
     const py = this.plane.y;
-    const pixelStride = this.isMobile ? SkyScene.COLLISION_PIXEL_STRIDE : 1;
+    const pixelStride = this.lowPower ? SkyScene.COLLISION_PIXEL_STRIDE : 1;
     const planeHalf = Math.max(Math.abs(this.plane.width), Math.abs(this.plane.height)) * 0.55;
     for (let i = this.birds.length - 1; i >= 0; i--) {
       const bird = this.birds[i]!;
@@ -549,7 +552,7 @@ export class SkyScene extends Container {
       }
     }
 
-    const sweepSamples = this.isMobile ? 3 : SkyScene.SWEEP_SAMPLES;
+    const sweepSamples = this.lowPower ? 3 : SkyScene.SWEEP_SAMPLES;
     for (let i = this.balloons.length - 1; i >= 0; i--) {
       const b = this.balloons[i]!;
       const bx = b.getWorldPosition().x;
