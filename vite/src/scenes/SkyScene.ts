@@ -41,6 +41,7 @@ import { Bird } from '../game/Bird';
 import { MultiplierPickup } from '../game/MultiplierPickup';
 import { createLevelBorder } from '../game/LevelBorder';
 import { CloudBackground } from '../game/Cloud';
+import { formatScore } from '../utils/format';
 import {
   getSpriteOutlineWorldPoints,
   pixelPerfectOverlap,
@@ -645,7 +646,7 @@ export class SkyScene extends Container {
 
     this.drawCollisionDebug();
 
-    this.scoreText.text = String(Globals.score);
+    this.scoreText.text = formatScore(Globals.score);
     this.multiplierText.text = `x ${Globals.scoreMultiplier}`;
   }
 

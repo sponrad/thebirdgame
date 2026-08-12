@@ -2,6 +2,7 @@ import { Container, Graphics, Rectangle, Text, TextStyle } from 'pixi.js';
 import type { Application } from 'pixi.js';
 import { MAX_SCORES } from '../utils/storage';
 import { fetchScores, type ScoreEntry } from '../utils/leaderboardApi';
+import { formatScore } from '../utils/format';
 
 const TITLE_STYLE = new TextStyle({
   fontFamily: 'Arial, Helvetica, sans-serif',
@@ -205,7 +206,7 @@ export class LeaderboardScene extends Container {
       row.root.visible = true;
       row.rank.text = String(i + 1);
       row.name.text = entry.name;
-      row.score.text = String(entry.score);
+      row.score.text = formatScore(entry.score);
     }
   }
 

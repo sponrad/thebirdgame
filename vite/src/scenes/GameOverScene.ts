@@ -3,6 +3,7 @@ import type { Application } from 'pixi.js';
 import { Globals } from '../game/Globals';
 import { getLastName, setLastName, sanitizeName } from '../utils/storage';
 import { fetchScores, qualifiesForLeaderboard, submitScore } from '../utils/leaderboardApi';
+import { formatScore } from '../utils/format';
 import { ScoreSavePrompt } from '../ui/scoreSavePrompt';
 
 const TITLE_STYLE = new TextStyle({
@@ -115,8 +116,8 @@ export class GameOverScene extends Container {
 
   refreshScores(): void {
     const token = ++this.promptToken;
-    this.scoreText.text = `Score: ${Globals.score}`;
-    this.bestText.text = `Best: ${Globals.highScore}`;
+    this.scoreText.text = `Score: ${formatScore(Globals.score)}`;
+    this.bestText.text = `Best: ${formatScore(Globals.highScore)}`;
     this.statusText.text = '';
     this.setButtonsVisible(true);
     this.prompt.hide();

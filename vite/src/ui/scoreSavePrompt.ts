@@ -1,4 +1,5 @@
 import { DEFAULT_NAME, MAX_NAME_LEN } from '../utils/storage';
+import { formatScore } from '../utils/format';
 
 export class ScoreSavePrompt {
   private root: HTMLDivElement;
@@ -51,7 +52,7 @@ export class ScoreSavePrompt {
   }
 
   show(score: number, defaultName: string): void {
-    this.scoreEl.textContent = String(score);
+    this.scoreEl.textContent = formatScore(score);
     this.input.value = defaultName;
     this.root.hidden = false;
     requestAnimationFrame(() => {
