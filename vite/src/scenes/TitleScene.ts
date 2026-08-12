@@ -11,7 +11,7 @@ import type { Application } from 'pixi.js';
 import { Globals } from '../game/Globals';
 import { setSound, setLowPowerMode, setAntialias } from '../utils/storage';
 import { audioManager } from '../audio/AudioManager';
-import { canFullscreen, isFullscreen, toggleFullscreen, needsHomeScreenFullscreen } from '../utils/landscape';
+import { canFullscreen, isFullscreen, toggleFullscreen, needsHomeScreenFullscreen, isCoarsePointerMobile } from '../utils/landscape';
 
 const TITLE_STYLE = new TextStyle({
   fontFamily: 'Arial, Helvetica, sans-serif',
@@ -19,13 +19,22 @@ const TITLE_STYLE = new TextStyle({
   fill: 0x111111,
   fontWeight: 'bold',
   letterSpacing: 1,
-  stroke: { color: 0xffffff, width: 6 },
+  // round joins: miter spikes look like "horns" on sharp letters (M).
+  stroke: { color: 0xffffff, width: 6, join: 'round' },
 });
 
 const SUBTITLE_STYLE = new TextStyle({
   fontFamily: 'Arial, Helvetica, sans-serif',
-  fontSize: 20,
-  fill: 0x1a1a1a,
+  fontSize: 22,
+  fill: 0xffffff,
+  fontWeight: 'bold',
+  dropShadow: {
+    color: 0x000000,
+    alpha: 0.55,
+    blur: 4,
+    distance: 2,
+    angle: Math.PI / 3,
+  },
 });
 
 const START_LABEL_STYLE = new TextStyle({
@@ -120,6 +129,7 @@ export class TitleScene extends Container {
   private leaderboardBtn!: Container;
   private fullscreenBtn!: Container | null;
   private installTip!: Text;
+  private landscapeTip!: Text;
   private soundRow!: Container;
   private soundCheckBg!: Graphics;
   private soundCheckMark!: Graphics;
@@ -211,6 +221,14 @@ export class TitleScene extends Container {
     this.installTip.anchor.set(0.5);
     this.installTip.visible = false;
     this.addChild(this.installTip);
+
+    this.landscapeTip = new Text({
+      text: 'Best played in landscape',
+      style: TIP_STYLE,
+    });
+    this.landscapeTip.anchor.set(0.5);
+    this.landscapeTip.visible = false;
+    this.addChild(this.landscapeTip);
 
     const sound = makeCheckRow('Sound');
     this.soundRow = sound.row;
@@ -383,19 +401,26 @@ export class TitleScene extends Container {
     this.subtitle.x = w / 2;
     this.subtitle.y = this.title.y + (compact ? 40 : 46) * this.title.scale.y;
 
+    const showLandscapeTip = isCoarsePointerMobile() && h > w;
+    this.landscapeTip.visible = showLandscapeTip;
+    this.landscapeTip.style.wordWrapWidth = Math.min(320, w - 40);
+    this.landscapeTip.x = w / 2;
+    this.landscapeTip.y = this.subtitle.y + (compact ? 28 : 32);
+
     const checksReserve = compact ? 56 : 0;
     const menuFloor = h - checksReserve;
     const startGap = compact ? 64 : 58;
     const secondaryGap = compact ? 56 : 50;
+    const afterBrand = showLandscapeTip ? this.landscapeTip.y + 28 : this.subtitle.y;
     let menuY = compact
-      ? Math.min(this.subtitle.y + 62, menuFloor * 0.4)
-      : this.subtitle.y + 70;
+      ? Math.min(afterBrand + 52, menuFloor * 0.4)
+      : afterBrand + 70;
 
     // Keep Start → Leaderboard → Fullscreen above the bottom check row.
     if (compact) {
       const menuBlockH = this.fullscreenBtn ? startGap + secondaryGap : startGap;
       const maxStartY = menuFloor - 24 - menuBlockH;
-      if (menuY > maxStartY) menuY = Math.max(this.subtitle.y + 48, maxStartY);
+      if (menuY > maxStartY) menuY = Math.max(afterBrand + 40, maxStartY);
     }
 
     this.tapPrompt.x = w / 2;
