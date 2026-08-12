@@ -30,6 +30,8 @@ const HOW_TO_PLAY_TEXT = [
   '',
   'Fly into balloons to pop them. The blast stuns nearby birds, score points for each one.',
   '',
+  'Stun a bird while it’s still tiny/incoming for a No Entry! bonus (10× bird points).',
+  '',
   'Grab the stars birds drop to raise your multiplier.',
   '',
   'Trace the arena border to paint it neon (Wax On), then trace again to wipe it (Wax Off) for big bonus points.',

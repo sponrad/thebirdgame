@@ -21,6 +21,7 @@ type BannerBit = {
   text: Text;
   life: number;
   maxLife: number;
+  baseScale: number;
 };
 
 /**
@@ -133,23 +134,32 @@ export class JuiceSystem {
     });
   }
 
-  /** Big centered announcement (e.g. WAX ON!). */
-  banner(screenX: number, screenY: number, message: string, color = 0x39ff14): void {
+  /** Big centered announcement (e.g. WAX ON! / No Entry!). */
+  banner(
+    screenX: number,
+    screenY: number,
+    message: string,
+    color = 0x39ff14,
+    opts?: { fontSize?: number; duration?: number; startScale?: number }
+  ): void {
+    const fontSize = opts?.fontSize ?? 52;
+    const maxLife = opts?.duration ?? 1.6;
+    const startScale = opts?.startScale ?? (fontSize >= 40 ? 0.65 : 0.85);
     const style = new TextStyle({
       fontFamily: 'Arial, Helvetica, sans-serif',
-      fontSize: 52,
+      fontSize,
       fill: color,
       fontWeight: 'bold',
-      stroke: { color: 0x111111, width: 6, join: 'round' },
-      letterSpacing: 2,
+      stroke: { color: 0x111111, width: Math.max(3, fontSize * 0.12), join: 'round' },
+      letterSpacing: fontSize >= 40 ? 2 : 1,
     });
     const text = new Text({ text: message, style });
     text.anchor.set(0.5);
     text.x = screenX;
     text.y = screenY;
-    text.scale.set(0.65);
+    text.scale.set(startScale);
     this.floatLayer.addChild(text);
-    this.banners.push({ text, life: 0, maxLife: 1.6 });
+    this.banners.push({ text, life: 0, maxLife, baseScale: startScale });
   }
 
   /** Start a short slow-mo death beat. Returns false until finished. */
@@ -251,7 +261,7 @@ export class JuiceSystem {
       const t = b.life / b.maxLife;
       const pop = t < 0.12 ? t / 0.12 : 1;
       const shrink = t > 0.7 ? 1 - ((t - 0.7) / 0.3) * 0.15 : 1;
-      b.text.scale.set(0.65 + pop * 0.45 * shrink);
+      b.text.scale.set(b.baseScale + pop * b.baseScale * 0.55 * shrink);
       b.text.alpha = t < 0.75 ? 1 : 1 - (t - 0.75) / 0.25;
       b.text.y -= 12 * dt;
       this.banners[bWrite++] = b;

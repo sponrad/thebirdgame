@@ -74,13 +74,16 @@ export const BIRD_ROTATION_SPEED = (90 * Math.PI) / 180;
 /** Rule2 separation: consider birds within this radius */
 export const BIRD_ENEMY_DISTANCE_RADIUS = 1.5;
 export const BIRD_BIRTH_TIME = 1.5;
-/** Flap: time per frame (Unity 0.1s), then delay before next flap cycle (1–2s) */
+/** Flap: time per frame, then delay before next flap cycle. */
 export const BIRD_FLAP_FRAME_DURATION = 0.1;
 export const BIRD_FLAP_CYCLE_DELAY_MIN = 1;
 export const BIRD_FLAP_CYCLE_DELAY_MAX = 2;
-/** Vultroso sprites are much larger; keep enemy size close to plane/balloon scale. */
+/** Stay tiny while spawning; snap to alive scale after birth time. */
 export const BIRD_SCALE_BIRTH = 0.004;
 export const BIRD_SCALE_ALIVE = 0.011;
+/** Base points per stunned bird (× multiplier). Incoming/mini birds × this. */
+export const BIRD_SCORE = 25;
+export const BIRD_NO_ENTRY_SCORE_MULT = 10;
 /** Stunned bird physics: knockback from blast, spin, then fall out of sky. */
 export const BIRD_DEAD_GRAVITY = 22;
 export const BIRD_DEAD_KNOCKBACK_SPEED = 10;

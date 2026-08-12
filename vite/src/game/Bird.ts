@@ -12,6 +12,8 @@ import {
   BIRD_FLAP_CYCLE_DELAY_MAX,
   BIRD_SCALE_BIRTH,
   BIRD_SCALE_ALIVE,
+  BIRD_SCORE,
+  BIRD_NO_ENTRY_SCORE_MULT,
   BIRD_DEAD_GRAVITY,
   BIRD_DEAD_KNOCKBACK_SPEED,
   BIRD_DEAD_KNOCKBACK_VARIANCE_MIN,
@@ -38,9 +40,15 @@ export type GetPlanePosition = () => { x: number; y: number };
 export type GetOtherBirds = () => Bird[];
 export type OnBirdDeath = (bird: Bird) => void;
 
+export type BirdHitResult = {
+  /** Stunned while still mini / spawning. */
+  noEntry: boolean;
+  points: number;
+};
+
 /**
- * Bird: birthing phase (scale up, rule2 only), then alive (chase plane + rule2, flap).
- * hit() → dead sprite, remove from list, add score, spawn multiplier (via callback).
+ * Bird: birthing phase (stay mini, rule2 only), then snap alive (chase + flap).
+ * hit() → dead sprite, score, spawn multiplier (via callback).
  */
 export class Bird extends Sprite {
   private static nextSepId = 1;
@@ -63,7 +71,7 @@ export class Bird extends Sprite {
   private deadVelocityX = 0;
   private deadVelocityY = 0;
   private deadSpinSpeed = 0;
-  /** After birth: settle from overshoot scale down to alive. */
+  /** Brief pop after snap-to-full birth. */
   private scaleSettle = 0;
 
   constructor(
@@ -96,6 +104,11 @@ export class Bird extends Sprite {
     return this.dead;
   }
 
+  /** Still spawning at mini size (eligible for No Entry!). */
+  isIncoming(): boolean {
+    return this.birthing && !this.dead;
+  }
+
   getWorldPosition(): { x: number; y: number } {
     return { x: this.x, y: this.y };
   }
@@ -123,12 +136,12 @@ export class Bird extends Sprite {
     return { x: cx * 0.5, y: cy * 0.5 };
   }
 
-  /** Called after BIRD_BIRTH_TIME to become alive (enable chase, set scale). */
+  /** Snap to full size and start chasing. */
   private born(): void {
     this.birthing = false;
     this.alive = true;
-    this.scale.set(BIRD_SCALE_ALIVE * 1.28);
-    this.scaleSettle = 0.22;
+    this.scale.set(BIRD_SCALE_ALIVE * 1.2);
+    this.scaleSettle = 0.12;
     this.startFlapCycle();
   }
 
@@ -145,9 +158,13 @@ export class Bird extends Sprite {
       Math.random() * (BIRD_FLAP_CYCLE_DELAY_MAX - BIRD_FLAP_CYCLE_DELAY_MIN);
   }
 
-  /** Hit by balloon explosion: stop flapping, gray out, knock back, spin, fall. */
-  hit(sourcePoint?: { x: number; y: number }): void {
-    if (this.dead) return;
+  /**
+   * Hit by balloon explosion: stop flapping, gray out, knock back, spin, fall.
+   * Incoming (mini) birds award No Entry! bonus points.
+   */
+  hit(sourcePoint?: { x: number; y: number }): BirdHitResult | null {
+    if (this.dead) return null;
+    const noEntry = this.birthing;
     this.dead = true;
     this.alive = false;
     this.birthing = false;
@@ -155,6 +172,8 @@ export class Bird extends Sprite {
     this.texture = this.deadTexture;
     this.tint = BIRD_DEAD_TINT;
     this.alpha = BIRD_DEAD_ALPHA;
+    // Keep mini corpses tiny so the No Entry! read stays clear.
+    if (noEntry) this.scale.set(BIRD_SCALE_BIRTH);
 
     const origin = sourcePoint ?? { x: this.x, y: this.y };
     const awayX = this.x - origin.x;
@@ -175,8 +194,13 @@ export class Bird extends Sprite {
       BIRD_DEAD_SPIN_MIN + Math.random() * (BIRD_DEAD_SPIN_MAX - BIRD_DEAD_SPIN_MIN);
     this.deadSpinSpeed = (Math.random() < 0.5 ? -1 : 1) * spinMag;
 
-    Globals.score += 25 * Globals.scoreMultiplier;
+    const points =
+      BIRD_SCORE *
+      (noEntry ? BIRD_NO_ENTRY_SCORE_MULT : 1) *
+      Globals.scoreMultiplier;
+    Globals.score += points;
     this.onDeath(this);
+    return { noEntry, points };
   }
 
   update(dt: number): void {
@@ -190,13 +214,8 @@ export class Bird extends Sprite {
 
     if (this.birthing) {
       this.birthAccum += dt;
-      const t = Math.min(1, this.birthAccum / BIRD_BIRTH_TIME);
-      // Ease-out-back style overshoot into birth end.
-      const over = t * t * (2.6 * t - 1.6);
-      const scale =
-        BIRD_SCALE_BIRTH +
-        Math.min(1.28, Math.max(0, over)) * (BIRD_SCALE_ALIVE - BIRD_SCALE_BIRTH);
-      this.scale.set(scale);
+      // Stay mini the whole spawn — no gradual growth.
+      this.scale.set(BIRD_SCALE_BIRTH);
       const v2 = this.rule2();
       this.x += v2.x * BIRD_SPEED * dt;
       this.y += v2.y * BIRD_SPEED * dt;
@@ -227,8 +246,8 @@ export class Bird extends Sprite {
     let liveScale = BIRD_SCALE_ALIVE;
     if (this.scaleSettle > 0) {
       this.scaleSettle = Math.max(0, this.scaleSettle - dt);
-      const t = this.scaleSettle / 0.22;
-      liveScale = BIRD_SCALE_ALIVE * (1 + 0.28 * t);
+      const t = this.scaleSettle / 0.12;
+      liveScale = BIRD_SCALE_ALIVE * (1 + 0.2 * t);
     }
     // Facing left (cos < 0) → flip sprite vertically vs Unity mid-flight.
     this.scale.y = Math.cos(this.rotation) < 0 ? -liveScale : liveScale;

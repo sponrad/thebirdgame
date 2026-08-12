@@ -779,14 +779,22 @@ export class SkyScene extends Container {
     const blastX = bx;
     const blastY = by - BALLOON_BULB_OFFSET;
     let birdsHit = 0;
+    let noEntryCount = 0;
+    let noEntryX = blastX;
+    let noEntryY = blastY;
     for (const bird of this.birds) {
       if (bird.isDead()) continue;
       const pos = bird.getWorldPosition();
       const ddx = pos.x - blastX;
       const ddy = pos.y - blastY;
       if (ddx * ddx + ddy * ddy < explosionRadius * explosionRadius) {
-        bird.hit({ x: blastX, y: blastY });
+        const result = bird.hit({ x: blastX, y: blastY });
         birdsHit += 1;
+        if (result?.noEntry) {
+          noEntryCount += 1;
+          noEntryX = pos.x;
+          noEntryY = pos.y;
+        }
       }
     }
     if (birdsHit > 0) setTimeout(() => audioManager.playEnemySpawn(), 250);
@@ -806,6 +814,19 @@ export class SkyScene extends Container {
       const sx = this.worldContainer.x + blastX * scale;
       const sy = this.worldContainer.y + (blastY - 1.2) * scale;
       this.juice.floatScore(sx, sy, gained);
+    }
+
+    if (noEntryCount > 0) {
+      const scale = this.worldContainer.scale.x;
+      const sx = this.worldContainer.x + noEntryX * scale;
+      const sy = this.worldContainer.y + noEntryY * scale;
+      this.juice.banner(sx, sy - 28, 'No Entry!', 0xff3b30, {
+        fontSize: 26,
+        duration: 1.1,
+        startScale: 0.9,
+      });
+      this.juice.shake(this.lowPower ? 3 : 6, 0.16);
+      audioManager.playMultiplierPickup(1.55);
     }
 
     this.balloonLayer.removeChild(b);
