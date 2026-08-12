@@ -72,6 +72,14 @@
       @keyframes boot-spin {
         to { transform: rotate(360deg); }
       }
+      @keyframes score-save-in {
+        from { transform: translateY(10px) scale(0.94); opacity: 0; }
+        to { transform: translateY(0) scale(1); opacity: 1; }
+      }
+      @keyframes score-best-pulse {
+        0%, 100% { transform: scale(1); }
+        40% { transform: scale(1.08); }
+      }
 
       #score-save-prompt {
         position: fixed;
@@ -97,6 +105,9 @@
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
         touch-action: auto;
       }
+      .score-save-card.score-save-in {
+        animation: score-save-in 0.38s cubic-bezier(0.2, 1.35, 0.3, 1);
+      }
       .score-save-kicker {
         font-size: 14px;
         letter-spacing: 0.06em;
@@ -108,6 +119,9 @@
         font-size: 36px;
         font-weight: bold;
         margin-bottom: 14px;
+      }
+      .score-save-value.is-new-best {
+        animation: score-best-pulse 0.7s ease;
       }
       .score-save-card label {
         display: block;

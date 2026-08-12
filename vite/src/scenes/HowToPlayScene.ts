@@ -1,5 +1,6 @@
 import { Container, Graphics, Rectangle, Text, TextStyle } from 'pixi.js';
 import type { Application } from 'pixi.js';
+import { addButtonPressJuice } from '../game/Juice';
 
 const TITLE_STYLE = new TextStyle({
   fontFamily: 'Arial, Helvetica, sans-serif',
@@ -47,6 +48,7 @@ function makeButton(label: string, width: number, height: number): Container {
   const text = new Text({ text: label, style: BACK_LABEL_STYLE });
   text.anchor.set(0.5);
   btn.addChild(text);
+  addButtonPressJuice(btn);
   return btn;
 }
 

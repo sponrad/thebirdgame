@@ -5,6 +5,7 @@ import { getLastName, setLastName, sanitizeName } from '../utils/storage';
 import { fetchScores, qualifiesForLeaderboard, submitScore } from '../utils/leaderboardApi';
 import { formatScore } from '../utils/format';
 import { ScoreSavePrompt } from '../ui/scoreSavePrompt';
+import { addButtonPressJuice } from '../game/Juice';
 
 const TITLE_STYLE = new TextStyle({
   fontFamily: 'sans-serif',
@@ -99,6 +100,7 @@ export class GameOverScene extends Container {
     this.playAgainBtn.eventMode = 'static';
     this.playAgainBtn.cursor = 'pointer';
     this.playAgainBtn.on('pointerdown', () => this.handlePlayAgain());
+    addButtonPressJuice(this.playAgainBtn);
     this.addChild(this.playAgainBtn);
 
     this.leaderboardBtn = new Text({ text: 'Leaderboard', style: BUTTON_STYLE });
@@ -106,6 +108,7 @@ export class GameOverScene extends Container {
     this.leaderboardBtn.eventMode = 'static';
     this.leaderboardBtn.cursor = 'pointer';
     this.leaderboardBtn.on('pointerdown', () => this.onLeaderboard());
+    addButtonPressJuice(this.leaderboardBtn);
     this.addChild(this.leaderboardBtn);
 
     this.howToPlayBtn = new Text({ text: 'How to Play', style: BUTTON_STYLE });
@@ -113,6 +116,7 @@ export class GameOverScene extends Container {
     this.howToPlayBtn.eventMode = 'static';
     this.howToPlayBtn.cursor = 'pointer';
     this.howToPlayBtn.on('pointerdown', () => this.onHowToPlay());
+    addButtonPressJuice(this.howToPlayBtn);
     this.addChild(this.howToPlayBtn);
 
     this.titleBtn = new Text({ text: 'Title', style: BUTTON_STYLE });
@@ -120,6 +124,7 @@ export class GameOverScene extends Container {
     this.titleBtn.eventMode = 'static';
     this.titleBtn.cursor = 'pointer';
     this.titleBtn.on('pointerdown', () => this.handleTitle());
+    addButtonPressJuice(this.titleBtn);
     this.addChild(this.titleBtn);
 
     this.updateLayout();
@@ -127,12 +132,31 @@ export class GameOverScene extends Container {
 
   refreshScores(): void {
     const token = ++this.promptToken;
+    const isNewBest = Globals.score > 0 && Globals.score >= Globals.highScore;
     this.scoreText.text = `Score: ${formatScore(Globals.score)}`;
-    this.bestText.text = `Best: ${formatScore(Globals.highScore)}`;
+    this.bestText.text = isNewBest
+      ? `New best: ${formatScore(Globals.highScore)}!`
+      : `Best: ${formatScore(Globals.highScore)}`;
+    this.bestText.scale.set(isNewBest ? 1.2 : 1);
     this.statusText.text = '';
     this.setButtonsVisible(true);
     this.prompt.hide();
     this.updateLayout();
+
+    if (isNewBest) {
+      const start = performance.now();
+      const punch = (): void => {
+        const t = (performance.now() - start) / 450;
+        if (t >= 1) {
+          this.bestText.scale.set(1);
+          return;
+        }
+        const s = 1 + Math.sin(t * Math.PI) * 0.22;
+        this.bestText.scale.set(s);
+        requestAnimationFrame(punch);
+      };
+      requestAnimationFrame(punch);
+    }
 
     if (Globals.score <= 0) return;
 
@@ -147,7 +171,7 @@ export class GameOverScene extends Container {
       if (token !== this.promptToken) return;
       if (!shouldPrompt) return;
       this.setButtonsVisible(false);
-      this.prompt.show(Globals.score, getLastName());
+      this.prompt.show(Globals.score, getLastName(), isNewBest);
       this.updateLayout();
     })();
   }
@@ -208,7 +232,7 @@ export class GameOverScene extends Container {
       if (token !== this.promptToken) return;
       this.statusText.text = 'Couldn’t save — try again';
       this.setButtonsVisible(false);
-      this.prompt.show(Globals.score, getLastName() || name);
+      this.prompt.show(Globals.score, getLastName() || name, Globals.score >= Globals.highScore);
       this.updateLayout();
     }
   }

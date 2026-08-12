@@ -3,6 +3,7 @@ import type { Application } from 'pixi.js';
 import { MAX_SCORES } from '../utils/storage';
 import { fetchScores, type ScoreEntry } from '../utils/leaderboardApi';
 import { formatScore } from '../utils/format';
+import { addButtonPressJuice } from '../game/Juice';
 
 const TITLE_STYLE = new TextStyle({
   fontFamily: 'Arial, Helvetica, sans-serif',
@@ -72,6 +73,7 @@ function makeButton(label: string, width: number, height: number): Container {
   const text = new Text({ text: label, style: BACK_LABEL_STYLE });
   text.anchor.set(0.5);
   btn.addChild(text);
+  addButtonPressJuice(btn);
   return btn;
 }
 

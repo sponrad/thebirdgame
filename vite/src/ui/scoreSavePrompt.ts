@@ -51,10 +51,20 @@ export class ScoreSavePrompt {
     skipBtn.addEventListener('click', () => this.onSkip());
   }
 
-  show(score: number, defaultName: string): void {
+  show(score: number, defaultName: string, isNewBest = false): void {
     this.scoreEl.textContent = formatScore(score);
+    this.scoreEl.classList.toggle('is-new-best', isNewBest);
+    const kicker = this.root.querySelector('.score-save-kicker') as HTMLParagraphElement | null;
+    if (kicker) kicker.textContent = isNewBest ? 'New best!' : 'Save score';
     this.input.value = defaultName;
     this.root.hidden = false;
+    const card = this.root.querySelector('.score-save-card') as HTMLElement | null;
+    if (card) {
+      card.classList.remove('score-save-in');
+      // Retrigger enter animation.
+      void card.offsetWidth;
+      card.classList.add('score-save-in');
+    }
     requestAnimationFrame(() => {
       this.input.focus();
       this.input.select();

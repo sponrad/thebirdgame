@@ -13,6 +13,7 @@ import { Plane } from '../game/Plane';
 import { Exhaust } from '../game/Exhaust';
 import { Balloon } from '../game/Balloon';
 import { ConfettiSystem } from '../game/ConfettiSystem';
+import { JuiceSystem } from '../game/Juice';
 import { audioManager } from '../audio/AudioManager';
 import {
   LEVEL_BOUNDS,
@@ -36,6 +37,7 @@ import {
   CAMERA_VIEW_WIDTH_FRACTION,
   VIEW_PADDING_PX,
   PLANE_BIRD_COLLISION_INSET,
+  NEAR_MISS_RADIUS,
 } from '../game/constants';
 import { Bird } from '../game/Bird';
 import { MultiplierPickup } from '../game/MultiplierPickup';
@@ -64,6 +66,7 @@ export class SkyScene extends Container {
   private birdLayer!: Container;
   private multiplierLayer!: Container;
   private confetti!: ConfettiSystem;
+  private juice!: JuiceSystem;
   private plane!: Plane;
   private clouds: CloudBackground[] = [];
   private exhausts: Exhaust[] = [];
@@ -90,6 +93,8 @@ export class SkyScene extends Container {
   private camY = 0;
   private camVelX = 0;
   private camVelY = 0;
+  private dying = false;
+  private nearMissCooldown = new Map<Bird, number>();
   private static COLLISION_ALPHA_THRESHOLD = 12;
   private static SWEEP_SAMPLES = 5;
   /** Sample every Nth opaque pixel for pixel-perfect checks (2 ≈ half the work). */
@@ -171,15 +176,21 @@ export class SkyScene extends Container {
     // Warm GPU particle path during boot (before first in-game pop).
     this.confetti.warm();
 
+    this.juice = new JuiceSystem();
+    this.juice.setHeavy(!this.lowPower);
+    this.addChild(this.juice.floatLayer);
+
     this.debugOverlay = new Graphics();
     this.addChild(this.debugOverlay);
 
     this.scoreText = new Text({ text: '0', style: HUD_STYLE });
+    this.scoreText.anchor.set(0, 0);
     this.scoreText.x = 16;
     this.scoreText.y = 16;
     this.addChild(this.scoreText);
 
     this.multiplierText = new Text({ text: 'x 1', style: HUD_STYLE });
+    this.multiplierText.anchor.set(0, 0);
     this.multiplierText.x = 16;
     this.multiplierText.y = 44;
     this.addChild(this.multiplierText);
@@ -193,6 +204,10 @@ export class SkyScene extends Container {
     this.camY = 0;
     this.camVelX = 0;
     this.camVelY = 0;
+    this.dying = false;
+    this.nearMissCooldown.clear();
+    this.juice.reset();
+    this.juice.setHeavy(!this.lowPower);
     this.exhaustAccum = 0;
     this.balloonSpawnAccum = 0;
     this.birdSpawnAccum = 0;
@@ -390,7 +405,7 @@ export class SkyScene extends Container {
     audioManager.playEnemySpawn();
   }
 
-  /** Zoomed camera: follow plane with damp; clamp so padded edges don't pan past the level. */
+  /** Zoomed camera: follow plane with look-ahead + damp; clamp so padded edges don't pan past the level. */
   private updateWorldView(dt = 0): void {
     const sw = this.app.screen.width;
     const sh = this.app.screen.height;
@@ -400,7 +415,9 @@ export class SkyScene extends Container {
     // Same horizontal coverage on every device: see ~2/3 of the arena width.
     const levelW = LEVEL_BOUNDS.maxX - LEVEL_BOUNDS.minX;
     const viewW = Math.max(1, levelW * CAMERA_VIEW_WIDTH_FRACTION);
-    const scale = usableW / viewW;
+    const baseScale = usableW / viewW;
+    const zoom = this.juice?.getDeathZoom?.() ?? 1;
+    const scale = baseScale * zoom;
     this.worldContainer.scale.set(scale);
 
     const viewHalfW = usableW / (2 * scale);
@@ -420,7 +437,7 @@ export class SkyScene extends Container {
     const targetX = Math.max(minCamX, Math.min(maxCamX, this.plane.x));
     const targetY = Math.max(minCamY, Math.min(maxCamY, this.plane.y));
 
-    if (dt > 0 && Globals.inGame) {
+    if (dt > 0 && (Globals.inGame || this.dying)) {
       const damp = this.smoothDamp2D(this.camX, this.camY, targetX, targetY, dt);
       this.camX = damp.x;
       this.camY = damp.y;
@@ -431,8 +448,9 @@ export class SkyScene extends Container {
       this.camVelY = 0;
     }
 
-    this.worldContainer.x = sw / 2 - this.camX * scale;
-    this.worldContainer.y = sh / 2 - this.camY * scale;
+    const shake = this.juice?.getShakeOffset?.() ?? { x: 0, y: 0 };
+    this.worldContainer.x = sw / 2 - this.camX * scale + shake.x;
+    this.worldContainer.y = sh / 2 - this.camY * scale + shake.y;
   }
 
   /** Unity-like SmoothDamp for camera follow. */
@@ -461,10 +479,30 @@ export class SkyScene extends Container {
   }
 
   private tick(): void {
-    const dt = this.app.ticker.deltaMS / 1000;
+    const realDt = Math.min(0.05, this.app.ticker.deltaMS / 1000);
+    audioManager.beginFrame();
+
+    if (this.dying) {
+      this.juice.update(realDt);
+      this.updateWorldView(realDt);
+      this.confetti.update(realDt);
+      this.applyHudPunch();
+      if (!this.juice.isDeathSlowing()) {
+        this.dying = false;
+        this.onGameOver();
+      }
+      return;
+    }
+
     if (!Globals.inGame) return;
 
-    audioManager.beginFrame();
+    const dt = this.juice.update(realDt);
+    if (dt <= 0) {
+      this.updateWorldView(realDt);
+      this.applyHudPunch();
+      this.drawCollisionDebug();
+      return;
+    }
 
     this.prevPlaneX = this.plane.x;
     this.prevPlaneY = this.plane.y;
@@ -513,6 +551,7 @@ export class SkyScene extends Container {
       if (!bird.isDead()) continue;
       if (bird.y <= LEVEL_BOUNDS.maxY + BIRD_DEAD_DESPAWN_MARGIN) continue;
       this.birdLayer.removeChild(bird);
+      this.nearMissCooldown.delete(bird);
       bird.destroy();
       this.birds.splice(i, 1);
     }
@@ -521,6 +560,7 @@ export class SkyScene extends Container {
     const py = this.plane.y;
     const pixelStride = this.lowPower ? SkyScene.COLLISION_PIXEL_STRIDE : 1;
     const planeHalf = Math.max(Math.abs(this.plane.width), Math.abs(this.plane.height)) * 0.55;
+    const nearR2 = NEAR_MISS_RADIUS * NEAR_MISS_RADIUS;
     for (let i = this.birds.length - 1; i >= 0; i--) {
       const bird = this.birds[i]!;
       if (!bird.isAlive()) continue;
@@ -528,8 +568,19 @@ export class SkyScene extends Container {
       const gate = planeHalf + birdHalf;
       const dx = bird.x - px;
       const dy = bird.y - py;
+      const distSq = dx * dx + dy * dy;
+      // Near-miss whoosh / flash just outside collision gate.
+      if (distSq < nearR2 && distSq > gate * gate) {
+        const last = this.nearMissCooldown.get(bird) ?? -Infinity;
+        if (now - last > 0.5) {
+          this.nearMissCooldown.set(bird, now);
+          this.plane.flashDanger();
+          this.juice.shake(this.lowPower ? 1.5 : 3, 0.12);
+          audioManager.playNearMiss();
+        }
+      }
       // Cheap circle gate before expensive pixel-perfect.
-      if (dx * dx + dy * dy > gate * gate) continue;
+      if (distSq > gate * gate) continue;
       const isHit = pixelPerfectOverlap(
         this.plane,
         bird,
@@ -542,10 +593,12 @@ export class SkyScene extends Container {
       if (this.debugCollisionEnabled) this.debugBirdCollisionChecks.push({ bird, hit: isHit });
       if (isHit) {
         Globals.inGame = false;
+        this.dying = true;
+        this.plane.setInputPointer(false, false);
         audioManager.playPlayerDead();
-        // Paint hitboxes on the death frame before freeze clears the ticker.
+        this.juice.beginDeathSlow(this.lowPower ? 0.35 : 0.55);
+        this.juice.shake(this.lowPower ? 8 : 16, 0.4);
         this.drawCollisionDebug();
-        this.onGameOver();
         return;
       }
     }
@@ -553,6 +606,10 @@ export class SkyScene extends Container {
     const sweepSamples = this.lowPower ? 3 : SkyScene.SWEEP_SAMPLES;
     for (let i = this.balloons.length - 1; i >= 0; i--) {
       const b = this.balloons[i]!;
+      if (b.isPopping()) {
+        if (b.beginPop()) this.popBalloon(b, i, now);
+        continue;
+      }
       const bx = b.getWorldPosition().x;
       const by = b.getWorldPosition().y;
       const dist = this.segmentToPointDistance(this.prevPlaneX, this.prevPlaneY, px, py, bx, by);
@@ -586,27 +643,7 @@ export class SkyScene extends Container {
         }
       }
       if (hitBalloon) {
-        Globals.score += 25 * Globals.scoreMultiplier;
-        const explosionRadius = this.getBalloonExplosionRadius(b);
-        const blastX = bx;
-        const blastY = by - BALLOON_BULB_OFFSET;
-        let anyBirdHit = false;
-        for (const bird of this.birds) {
-          if (bird.isDead()) continue;
-          const pos = bird.getWorldPosition();
-          const ddx = pos.x - blastX;
-          const ddy = pos.y - blastY;
-          if (ddx * ddx + ddy * ddy < explosionRadius * explosionRadius) {
-            bird.hit({ x: blastX, y: blastY });
-            anyBirdHit = true;
-          }
-        }
-        if (anyBirdHit) setTimeout(() => audioManager.playEnemySpawn(), 250);
-        this.confetti.burst(blastX, blastY, explosionRadius);
-        this.balloonLayer.removeChild(b);
-        b.destroy();
-        this.balloons.splice(i, 1);
-        audioManager.playBalloonPop();
+        b.beginPop();
       }
     }
 
@@ -618,14 +655,16 @@ export class SkyScene extends Container {
 
     for (let i = this.multipliers.length - 1; i >= 0; i--) {
       const pickup = this.multipliers[i];
+      const wasCollected = pickup.wasCollected();
       if (pickup.update(dt, now, px, py, this.getMultiplierAttractRadius())) {
-        if (pickup.wasCollected()) {
-          Globals.scoreMultiplier += 1;
-          audioManager.playMultiplierPickup();
-        }
         this.multiplierLayer.removeChild(pickup);
         pickup.destroy();
         this.multipliers.splice(i, 1);
+      } else if (!wasCollected && pickup.wasCollected()) {
+        Globals.scoreMultiplier += 1;
+        const rate = Math.min(1.85, 0.85 + Globals.scoreMultiplier * 0.08);
+        audioManager.playMultiplierPickup(rate);
+        this.juice.punchMultiplier();
       }
     }
 
@@ -648,6 +687,58 @@ export class SkyScene extends Container {
 
     this.scoreText.text = formatScore(Globals.score);
     this.multiplierText.text = `x ${Globals.scoreMultiplier}`;
+    this.applyHudPunch();
+  }
+
+  private applyHudPunch(): void {
+    const sp = this.juice.getScorePunch();
+    const mp = this.juice.getMultPunch();
+    this.scoreText.scale.set(sp);
+    this.multiplierText.scale.set(mp);
+  }
+
+  private popBalloon(b: Balloon, index: number, now: number): void {
+    const bx = b.getWorldPosition().x;
+    const by = b.getWorldPosition().y;
+    const scoreBefore = Globals.score;
+    Globals.score += 25 * Globals.scoreMultiplier;
+    const explosionRadius = this.getBalloonExplosionRadius(b);
+    const blastX = bx;
+    const blastY = by - BALLOON_BULB_OFFSET;
+    let birdsHit = 0;
+    for (const bird of this.birds) {
+      if (bird.isDead()) continue;
+      const pos = bird.getWorldPosition();
+      const ddx = pos.x - blastX;
+      const ddy = pos.y - blastY;
+      if (ddx * ddx + ddy * ddy < explosionRadius * explosionRadius) {
+        bird.hit({ x: blastX, y: blastY });
+        birdsHit += 1;
+      }
+    }
+    if (birdsHit > 0) setTimeout(() => audioManager.playEnemySpawn(), 250);
+
+    const combo = this.juice.registerPop(now);
+    const intensity = Math.min(2.4, 1 + (combo - 1) * 0.35 + birdsHit * 0.2);
+    this.confetti.burst(blastX, blastY, explosionRadius, this.lowPower ? Math.min(1.2, intensity) : intensity);
+
+    const shakeAmp = (this.lowPower ? 4 : 7) + birdsHit * 2.5 + (combo - 1) * 1.5;
+    this.juice.shake(shakeAmp, 0.18 + Math.min(0.2, birdsHit * 0.04));
+    this.juice.hitStop(this.lowPower ? 0.03 : birdsHit > 0 ? 0.055 : 0.04);
+    this.juice.punchScore();
+
+    const gained = Globals.score - scoreBefore;
+    if (gained > 0) {
+      const scale = this.worldContainer.scale.x;
+      const sx = this.worldContainer.x + blastX * scale;
+      const sy = this.worldContainer.y + (blastY - 1.2) * scale;
+      this.juice.floatScore(sx, sy, gained);
+    }
+
+    this.balloonLayer.removeChild(b);
+    b.destroy();
+    this.balloons.splice(index, 1);
+    audioManager.playBalloonPop();
   }
 
   private getBalloonHitbox(balloon: Balloon): { cx: number; cy: number; rx: number; ry: number } {

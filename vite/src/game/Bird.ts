@@ -63,6 +63,8 @@ export class Bird extends Sprite {
   private deadVelocityX = 0;
   private deadVelocityY = 0;
   private deadSpinSpeed = 0;
+  /** After birth: settle from overshoot scale down to alive. */
+  private scaleSettle = 0;
 
   constructor(
     flapTextures: Texture[],
@@ -125,7 +127,8 @@ export class Bird extends Sprite {
   private born(): void {
     this.birthing = false;
     this.alive = true;
-    this.scale.set(BIRD_SCALE_ALIVE);
+    this.scale.set(BIRD_SCALE_ALIVE * 1.28);
+    this.scaleSettle = 0.22;
     this.startFlapCycle();
   }
 
@@ -188,7 +191,11 @@ export class Bird extends Sprite {
     if (this.birthing) {
       this.birthAccum += dt;
       const t = Math.min(1, this.birthAccum / BIRD_BIRTH_TIME);
-      const scale = BIRD_SCALE_BIRTH + t * (BIRD_SCALE_ALIVE - BIRD_SCALE_BIRTH);
+      // Ease-out-back style overshoot into birth end.
+      const over = t * t * (2.6 * t - 1.6);
+      const scale =
+        BIRD_SCALE_BIRTH +
+        Math.min(1.28, Math.max(0, over)) * (BIRD_SCALE_ALIVE - BIRD_SCALE_BIRTH);
       this.scale.set(scale);
       const v2 = this.rule2();
       this.x += v2.x * BIRD_SPEED * dt;
@@ -217,9 +224,15 @@ export class Bird extends Sprite {
     this.x = Math.max(LEVEL_BOUNDS.minX, Math.min(LEVEL_BOUNDS.maxX, this.x));
     this.y = Math.max(LEVEL_BOUNDS.minY, Math.min(LEVEL_BOUNDS.maxY, this.y));
 
+    let liveScale = BIRD_SCALE_ALIVE;
+    if (this.scaleSettle > 0) {
+      this.scaleSettle = Math.max(0, this.scaleSettle - dt);
+      const t = this.scaleSettle / 0.22;
+      liveScale = BIRD_SCALE_ALIVE * (1 + 0.28 * t);
+    }
     // Facing left (cos < 0) → flip sprite vertically vs Unity mid-flight.
-    this.scale.y = Math.cos(this.rotation) < 0 ? -BIRD_SCALE_ALIVE : BIRD_SCALE_ALIVE;
-    this.scale.x = BIRD_SCALE_ALIVE;
+    this.scale.y = Math.cos(this.rotation) < 0 ? -liveScale : liveScale;
+    this.scale.x = liveScale;
 
     if (this.inFlapCycle) {
       this.flapAccum += dt;

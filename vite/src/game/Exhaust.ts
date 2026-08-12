@@ -17,6 +17,11 @@ export class Exhaust extends Sprite {
 
   /** Returns true if this exhaust should be removed. */
   update(now: number): boolean {
-    return now - this.spawnTime >= EXHAUST_LIFETIME;
+    const age = now - this.spawnTime;
+    const t = Math.min(1, Math.max(0, age / EXHAUST_LIFETIME));
+    this.alpha = 1 - t;
+    const s = EXHAUST_SCALE * (1 - t * 0.55);
+    this.scale.set(s);
+    return age >= EXHAUST_LIFETIME;
   }
 }

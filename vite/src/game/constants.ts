@@ -35,6 +35,11 @@ export const CAMERA_VIEW_HALF_HEIGHT = CAMERA_VIEW_HALF_EXTENT;
 /** Keep level border / view inset from the window edges when camera is clamped. */
 export const VIEW_PADDING_PX = 29;
 
+/** Near-miss radius (world) for whoosh / danger flash. */
+export const NEAR_MISS_RADIUS = 4.5;
+/** Max plane bank lean while turning (radians). */
+export const PLANE_BANK_ANGLE = 0.18;
+
 /** Balloon (Unity BalloonControlScript) */
 export const BALLOON_SPEED = 3;
 /** Explosion stun radius = this × balloon bulb radius (hitbox). */

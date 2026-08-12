@@ -121,12 +121,14 @@ export class ConfettiSystem {
   }
 
   /** Spawn a burst at world position (balloon bulb). */
-  burst(x: number, y: number, radius: number): void {
+  /** @param intensity multiplies particle count (combo pops). */
+  burst(x: number, y: number, radius: number, intensity = 1): void {
     if (!this.warmed) this.warm();
 
     const stunR = Math.max(1, radius);
+    const count = Math.max(4, Math.floor(this.burstCount * Math.max(0.35, intensity)));
 
-    for (let i = 0; i < this.burstCount; i++) {
+    for (let i = 0; i < count; i++) {
       const bit = this.free.pop();
       if (!bit) break; // pool exhausted — skip rather than allocate mid-frame
       const p = bit.particle;

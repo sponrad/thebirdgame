@@ -239,7 +239,7 @@ export class AudioManager {
     this.playsThisFrame = 0;
   }
 
-  play(category: AudioCategory): void {
+  play(category: AudioCategory, playbackRate = 1): void {
     if (!Globals.sound || !this.ctx || !this.master) return;
     if (!this.loaded) return;
     if (this.ctx.state !== 'running') {
@@ -264,6 +264,7 @@ export class AudioManager {
     try {
       const src = this.ctx.createBufferSource();
       src.buffer = buf;
+      src.playbackRate.value = Math.max(0.5, Math.min(2, playbackRate));
       src.connect(this.master);
       this.activeVoices += 1;
       this.playsThisFrame += 1;
@@ -307,8 +308,12 @@ export class AudioManager {
   playPlayerDead(): void {
     this.play('playerDead');
   }
-  playMultiplierPickup(): void {
-    this.play('multiplierPickup');
+  playMultiplierPickup(playbackRate = 1): void {
+    this.play('multiplierPickup', playbackRate);
+  }
+  playNearMiss(): void {
+    // Reuse a soft balloon-rub as a whoosh stand-in.
+    this.play('balloonSpawn', 1.35);
   }
 }
 

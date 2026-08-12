@@ -15,6 +15,7 @@ export class MultiplierPickup extends Sprite {
   private spawnTime: number;
   private collected = false;
   private magnetized = false;
+  private collectAnim = 0;
 
   constructor(texture: Texture, x: number, y: number, spawnTime: number) {
     super(texture);
@@ -37,7 +38,20 @@ export class MultiplierPickup extends Sprite {
    * @returns true when this pickup should be removed (collected or lifetime expired).
    */
   update(dt: number, now: number, planeX: number, planeY: number, attractRadius: number): boolean {
+    if (this.collected) {
+      this.collectAnim += dt;
+      const t = Math.min(1, this.collectAnim / 0.14);
+      this.x += (planeX - this.x) * Math.min(1, dt * 18);
+      this.y += (planeY - this.y) * Math.min(1, dt * 18);
+      this.rotation += 18 * dt;
+      this.scale.set(MULTIPLIER_SCALE * (1.35 - t * 1.35));
+      this.alpha = 1 - t;
+      return t >= 1;
+    }
+
     if (now - this.spawnTime >= MULTIPLIER_PICKUP_LIFETIME) return true;
+
+    this.rotation += 3.2 * dt;
 
     const dx = planeX - this.x;
     const dy = planeY - this.y;
@@ -45,7 +59,8 @@ export class MultiplierPickup extends Sprite {
 
     if (dist <= MULTIPLIER_COLLECT_RADIUS) {
       this.collected = true;
-      return true;
+      this.collectAnim = 0;
+      return false;
     }
 
     if (dist <= attractRadius) this.magnetized = true;
@@ -54,6 +69,11 @@ export class MultiplierPickup extends Sprite {
       const step = Math.min(dist, MULTIPLIER_SPEED * dt);
       this.x += (dx / dist) * step;
       this.y += (dy / dist) * step;
+      const pull = 1 - Math.min(1, dist / Math.max(1e-4, attractRadius));
+      this.scale.set(MULTIPLIER_SCALE * (1 + pull * 0.55));
+    } else {
+      const pulse = 1 + Math.sin(now * 6) * 0.08;
+      this.scale.set(MULTIPLIER_SCALE * pulse);
     }
 
     return false;
