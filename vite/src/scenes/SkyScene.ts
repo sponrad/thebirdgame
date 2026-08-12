@@ -53,12 +53,19 @@ import {
 } from '../utils/collision';
 
 const HUD_STYLE = new TextStyle({
-  fontFamily: 'sans-serif',
-  fontSize: 22,
+  fontFamily: 'Arial, Helvetica, sans-serif',
+  fontSize: 24,
   fill: 0x1a1a1a,
   fontWeight: 'bold',
-  stroke: { color: 0xffffff, width: 4, join: 'round' },
+  stroke: { color: 0xffffff, width: 5, join: 'round' },
+  // Extra padding so the stroke isn’t clipped when rendered at high resolution.
+  padding: 6,
 });
+
+/** Keep HUD text sharp on high-DPI / low-power (capped canvas) devices. */
+function hudTextResolution(): number {
+  return Math.min(window.devicePixelRatio || 1, 3);
+}
 
 export class SkyScene extends Container {
   private app: Application;
@@ -166,6 +173,10 @@ export class SkyScene extends Container {
     this.balloonLayer = new Container();
     this.worldContainer.addChild(this.balloonLayer);
 
+    // Stars behind the plane so collect anim doesn't pop in front of the nose.
+    this.multiplierLayer = new Container();
+    this.worldContainer.addChild(this.multiplierLayer);
+
     this.plane = new Plane(this.planeTexture);
     this.plane.scale.set(PLANE_SCALE);
     this.plane.x = 0;
@@ -174,9 +185,6 @@ export class SkyScene extends Container {
 
     this.birdLayer = new Container();
     this.worldContainer.addChild(this.birdLayer);
-
-    this.multiplierLayer = new Container();
-    this.worldContainer.addChild(this.multiplierLayer);
 
     this.confetti = new ConfettiSystem(this.lowPower ? 36 : BALLOON_POP_CONFETTI_COUNT);
     this.worldContainer.addChild(this.confetti.view);
@@ -190,25 +198,34 @@ export class SkyScene extends Container {
     this.debugOverlay = new Graphics();
     this.addChild(this.debugOverlay);
 
-    this.scoreText = new Text({ text: '0', style: HUD_STYLE });
+    this.scoreText = new Text({ text: '0', style: HUD_STYLE, resolution: hudTextResolution() });
     this.scoreText.anchor.set(0, 0);
+    this.scoreText.roundPixels = true;
     this.addChild(this.scoreText);
 
-    this.multiplierText = new Text({ text: 'x 1', style: HUD_STYLE });
+    this.multiplierText = new Text({
+      text: 'x 1',
+      style: HUD_STYLE,
+      resolution: hudTextResolution(),
+    });
     this.multiplierText.anchor.set(1, 0);
+    this.multiplierText.roundPixels = true;
     this.addChild(this.multiplierText);
 
     this.waxProgressText = new Text({
       text: '',
       style: new TextStyle({
-        fontFamily: 'sans-serif',
+        fontFamily: 'Arial, Helvetica, sans-serif',
         fontSize: 16,
         fill: 0x39ff14,
         fontWeight: 'bold',
         stroke: { color: 0x111111, width: 3, join: 'round' },
+        padding: 4,
       }),
+      resolution: hudTextResolution(),
     });
     this.waxProgressText.anchor.set(0.5, 1);
+    this.waxProgressText.roundPixels = true;
     this.waxProgressText.visible = false;
     this.addChild(this.waxProgressText);
 
@@ -216,6 +233,7 @@ export class SkyScene extends Container {
   }
 
   start(): void {
+    document.body.classList.add('gameplay-active');
     this.plane.x = 0;
     this.plane.y = 0;
     this.plane.resetHeading();
@@ -276,6 +294,7 @@ export class SkyScene extends Container {
 
   /** Stop simulation/input but keep the last frame (+ debug outlines) for game-over. */
   freeze(): void {
+    document.body.classList.remove('gameplay-active');
     this.app.ticker.remove(this.tickerBound);
     this.app.stage.off('pointerdown', this.onPointerDown, this);
     this.app.stage.off('pointerup', this.onPointerUp, this);
@@ -297,6 +316,7 @@ export class SkyScene extends Container {
   }
 
   stop(): void {
+    document.body.classList.remove('gameplay-active');
     this.app.ticker.remove(this.tickerBound);
     this.app.stage.off('pointerdown', this.onPointerDown, this);
     this.app.stage.off('pointerup', this.onPointerUp, this);
@@ -366,6 +386,7 @@ export class SkyScene extends Container {
   }
 
   private onPointerDown = (e: { global: { x: number } }): void => {
+    if (!Globals.inGame) return;
     this.pointerDown = true;
     const mid = this.app.screen.width / 2;
     this.plane.setInputPointer(e.global.x < mid, e.global.x >= mid);
@@ -377,7 +398,7 @@ export class SkyScene extends Container {
   };
 
   private onPointerMove = (e: { global: { x: number } }): void => {
-    if (!this.pointerDown) return;
+    if (!Globals.inGame || !this.pointerDown) return;
     const mid = this.app.screen.width / 2;
     this.plane.setInputPointer(e.global.x < mid, e.global.x >= mid);
   };

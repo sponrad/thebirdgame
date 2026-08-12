@@ -39,13 +39,28 @@ async function init(): Promise<void> {
   const canvas = app.canvas;
   canvas.style.touchAction = 'none';
   canvas.style.userSelect = 'none';
-  (canvas.style as CSSStyleDeclaration & { webkitUserSelect?: string }).webkitUserSelect = 'none';
+  const canvasCss = canvas.style as CSSStyleDeclaration & {
+    webkitUserSelect?: string;
+    webkitTouchCallout?: string;
+    webkitUserDrag?: string;
+  };
+  canvasCss.webkitUserSelect = 'none';
+  canvasCss.webkitTouchCallout = 'none';
+  canvasCss.webkitUserDrag = 'none';
+  canvas.setAttribute('draggable', 'false');
+
   const blockGesture = (e: Event): void => {
     e.preventDefault();
   };
   canvas.addEventListener('selectstart', blockGesture);
   canvas.addEventListener('gesturestart', blockGesture);
   canvas.addEventListener('contextmenu', blockGesture);
+  // Non-passive so iOS can't start callout / magnifier / text selection mid-flight.
+  canvas.addEventListener('touchstart', blockGesture, { passive: false });
+  canvas.addEventListener('touchmove', blockGesture, { passive: false });
+  document.addEventListener('gesturestart', blockGesture, { passive: false });
+  document.addEventListener('gesturechange', blockGesture, { passive: false });
+  document.addEventListener('gestureend', blockGesture, { passive: false });
 
   await audioManager.init();
 

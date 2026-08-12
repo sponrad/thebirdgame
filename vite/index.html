@@ -36,6 +36,17 @@
         touch-action: none;
         -webkit-user-select: none;
         user-select: none;
+        -webkit-touch-callout: none;
+        -webkit-user-drag: none;
+      }
+      /* Extra hard lock while flying — kills iOS long-press callout / select bubbles. */
+      body.gameplay-active,
+      body.gameplay-active #game,
+      body.gameplay-active canvas {
+        -webkit-touch-callout: none !important;
+        -webkit-user-select: none !important;
+        user-select: none !important;
+        -webkit-user-drag: none !important;
       }
 
       #boot-loader {
@@ -139,6 +150,7 @@
         text-align: center;
         -webkit-user-select: text;
         user-select: text;
+        -webkit-touch-callout: default;
         touch-action: manipulation;
       }
       .score-save-actions {
