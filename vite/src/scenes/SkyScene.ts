@@ -41,7 +41,7 @@ import {
 } from '../game/constants';
 import { Bird } from '../game/Bird';
 import { MultiplierPickup } from '../game/MultiplierPickup';
-import { createLevelBorder } from '../game/LevelBorder';
+import { LevelBorder } from '../game/LevelBorder';
 import { CloudBackground } from '../game/Cloud';
 import { formatScore } from '../utils/format';
 import {
@@ -67,6 +67,7 @@ export class SkyScene extends Container {
   private multiplierLayer!: Container;
   private confetti!: ConfettiSystem;
   private juice!: JuiceSystem;
+  private border!: LevelBorder;
   private plane!: Plane;
   private clouds: CloudBackground[] = [];
   private exhausts: Exhaust[] = [];
@@ -151,7 +152,8 @@ export class SkyScene extends Container {
     this.cloudLayer.addChild(sky);
     this.clouds = [sky];
 
-    this.worldContainer.addChild(createLevelBorder());
+    this.border = new LevelBorder();
+    this.worldContainer.addChild(this.border);
 
     this.exhaustLayer = new Container();
     this.worldContainer.addChild(this.exhaustLayer);
@@ -507,6 +509,7 @@ export class SkyScene extends Container {
     this.prevPlaneX = this.plane.x;
     this.prevPlaneY = this.plane.y;
     this.plane.update(dt);
+    this.border.update(this.plane.x, this.plane.y, dt);
     this.updateWorldView(dt);
     this.debugBirdCollisionChecks.length = 0;
     this.debugBalloonSweepPoints.length = 0;

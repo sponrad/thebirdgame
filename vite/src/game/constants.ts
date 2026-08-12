@@ -120,7 +120,11 @@ export const MULTIPLIER_COLLECT_RADIUS = 1.5;
 export const BORDER_DASH_LENGTH = 1.4;
 export const BORDER_GAP_LENGTH = 0.9;
 export const BORDER_STROKE_WIDTH = 0.28;
-export const BORDER_COLOR = 0x2a5f6e;
+export const BORDER_COLOR = 0xeef7fc;
+/** Nearly invisible far from the plane; ramps to solid when close. */
+export const BORDER_BASE_ALPHA = 0.08;
+/** World distance from plane where border dashes start darkening toward black. */
+export const BORDER_WARN_DISTANCE = 50;
 
 /** Painted noise cloud backdrop */
 export const CLOUD_SCROLL_SPEED_X = 0.35;
