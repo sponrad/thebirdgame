@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "start": "node server/index.mjs",
     "assets": "node scripts/copy-assets.mjs"
   },
   "devDependencies": {

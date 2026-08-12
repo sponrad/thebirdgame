@@ -28,7 +28,7 @@ Run this once after clone, or whenever Unity assets change. The Unity `Assets/` 
 npm run dev
 ```
 
-Open the URL shown in the terminal (usually http://localhost:5173).
+Open the URL shown in the terminal (usually http://localhost:5173). Dev also serves the shared leaderboard at `/api/scores` (`data/scores.json`).
 
 ## Build
 
@@ -36,4 +36,10 @@ Open the URL shown in the terminal (usually http://localhost:5173).
 npm run build
 ```
 
-Output is in `dist/`. Serve with `npm run preview` to test.
+Output is in `dist/`. For a production-like run (static files + leaderboard API):
+
+```bash
+npm start
+```
+
+Docker uses the same Node server (not nginx) so every visitor shares one leaderboard file. Persist `/data` across deploys if you want scores to survive container recreation.

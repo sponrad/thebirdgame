@@ -1,0 +1,71 @@
+import { DEFAULT_NAME, MAX_NAME_LEN } from '../utils/storage';
+
+export class ScoreSavePrompt {
+  private root: HTMLDivElement;
+  private scoreEl: HTMLParagraphElement;
+  private input: HTMLInputElement;
+  private onSave: (name: string) => void;
+  private onSkip: () => void;
+
+  constructor(handlers: { onSave: (name: string) => void; onSkip: () => void }) {
+    this.onSave = handlers.onSave;
+    this.onSkip = handlers.onSkip;
+
+    this.root = document.createElement('div');
+    this.root.id = 'score-save-prompt';
+    this.root.hidden = true;
+    this.root.innerHTML = `
+      <form class="score-save-card" autocomplete="on">
+        <p class="score-save-kicker">Save score</p>
+        <p class="score-save-value"></p>
+        <label for="score-save-name">Your name</label>
+        <input
+          id="score-save-name"
+          name="nickname"
+          type="text"
+          maxlength="${MAX_NAME_LEN}"
+          autocomplete="nickname"
+          enterkeyhint="done"
+          autocapitalize="words"
+          spellcheck="false"
+          placeholder="${DEFAULT_NAME}"
+        />
+        <div class="score-save-actions">
+          <button type="submit" class="score-save-save">Save</button>
+          <button type="button" class="score-save-skip">Skip</button>
+        </div>
+      </form>
+    `;
+    document.body.appendChild(this.root);
+
+    this.scoreEl = this.root.querySelector('.score-save-value') as HTMLParagraphElement;
+    this.input = this.root.querySelector('#score-save-name') as HTMLInputElement;
+    const form = this.root.querySelector('form') as HTMLFormElement;
+    const skipBtn = this.root.querySelector('.score-save-skip') as HTMLButtonElement;
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.onSave(this.input.value);
+    });
+    skipBtn.addEventListener('click', () => this.onSkip());
+  }
+
+  show(score: number, defaultName: string): void {
+    this.scoreEl.textContent = String(score);
+    this.input.value = defaultName;
+    this.root.hidden = false;
+    requestAnimationFrame(() => {
+      this.input.focus();
+      this.input.select();
+    });
+  }
+
+  hide(): void {
+    this.root.hidden = true;
+    this.input.blur();
+  }
+
+  isOpen(): boolean {
+    return !this.root.hidden;
+  }
+}

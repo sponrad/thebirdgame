@@ -89,6 +89,7 @@ function makeButton(
 export class TitleScene extends Container {
   private app: Application;
   private onPlay: () => void;
+  private onLeaderboard: () => void;
   private clipMask!: Graphics;
   private splash!: Sprite;
   private title!: Text;
@@ -104,14 +105,19 @@ export class TitleScene extends Container {
   private menuReady = false;
   private priming = false;
 
-  private constructor(app: Application, onPlay: () => void) {
+  private constructor(app: Application, onPlay: () => void, onLeaderboard: () => void) {
     super();
     this.app = app;
     this.onPlay = onPlay;
+    this.onLeaderboard = onLeaderboard;
   }
 
-  static async create(app: Application, onPlay: () => void): Promise<TitleScene> {
-    const scene = new TitleScene(app, onPlay);
+  static async create(
+    app: Application,
+    onPlay: () => void,
+    onLeaderboard: () => void
+  ): Promise<TitleScene> {
+    const scene = new TitleScene(app, onPlay, onLeaderboard);
     const splashTexture = await Assets.load<Texture>('/sprites/icon-swooping-bird.png');
     scene.build(splashTexture);
     return scene;
@@ -144,6 +150,7 @@ export class TitleScene extends Container {
 
     this.leaderboardBtn = makeButton('Leaderboard', SECONDARY_LABEL_STYLE, 180, 42);
     this.leaderboardBtn.alpha = 0.85;
+    this.leaderboardBtn.on('pointerdown', () => this.onLeaderboard());
     this.addChild(this.leaderboardBtn);
 
     this.fullscreenBtn = null;

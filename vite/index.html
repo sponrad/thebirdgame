@@ -72,6 +72,87 @@
       @keyframes boot-spin {
         to { transform: rotate(360deg); }
       }
+
+      #score-save-prompt {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.28);
+        font-family: Arial, Helvetica, sans-serif;
+        color: #1a1a1a;
+        touch-action: auto;
+      }
+      #score-save-prompt[hidden] {
+        display: none !important;
+      }
+      .score-save-card {
+        background: #fff;
+        border-radius: 10px;
+        padding: 22px 24px 18px;
+        width: min(320px, calc(100vw - 40px));
+        text-align: center;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+        touch-action: auto;
+      }
+      .score-save-kicker {
+        font-size: 14px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #555;
+        margin-bottom: 4px;
+      }
+      .score-save-value {
+        font-size: 36px;
+        font-weight: bold;
+        margin-bottom: 14px;
+      }
+      .score-save-card label {
+        display: block;
+        font-size: 15px;
+        font-weight: bold;
+        margin-bottom: 6px;
+      }
+      #score-save-name {
+        width: 100%;
+        font-size: 18px;
+        padding: 10px 12px;
+        margin-bottom: 16px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        text-align: center;
+        -webkit-user-select: text;
+        user-select: text;
+        touch-action: manipulation;
+      }
+      .score-save-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+      }
+      .score-save-save,
+      .score-save-skip {
+        font-size: 16px;
+        font-weight: bold;
+        padding: 10px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+      .score-save-save {
+        background: #1a1a1a;
+        color: #fff;
+        border: 0;
+        min-width: 96px;
+      }
+      .score-save-skip {
+        background: #fff;
+        color: #333;
+        border: 1px solid #ddd;
+        min-width: 96px;
+      }
     </style>
   </head>
   <body>

@@ -5,6 +5,7 @@ import { setupMobileChrome } from './utils/landscape';
 import { audioManager } from './audio/AudioManager';
 import { TitleScene } from './scenes/TitleScene';
 import { GameOverScene } from './scenes/GameOverScene';
+import { LeaderboardScene } from './scenes/LeaderboardScene';
 import { SkyScene } from './scenes/SkyScene';
 
 type Scene = TitleScene | GameOverScene | SkyScene;
@@ -40,17 +41,27 @@ async function init(): Promise<void> {
 
   await audioManager.init();
 
-  const titleScene = await TitleScene.create(app, () => {
-    resetForNewGame();
-    switchTo(skyScene);
-  });
+  const titleScene = await TitleScene.create(
+    app,
+    () => {
+      resetForNewGame();
+      switchTo(skyScene);
+    },
+    () => showLeaderboardOverlay()
+  );
 
-  const gameOverScene = new GameOverScene(app, () => {
-    hideGameOverOverlay();
-    resetForNewGame();
-    skyScene.start();
-    currentScene = skyScene;
-  });
+  const gameOverScene = new GameOverScene(
+    app,
+    () => {
+      hideGameOverOverlay();
+      resetForNewGame();
+      skyScene.start();
+      currentScene = skyScene;
+    },
+    () => showLeaderboardOverlay()
+  );
+
+  const leaderboardScene = new LeaderboardScene(app, () => hideLeaderboardOverlay());
 
   const skyScene = await SkyScene.create(app, () => {
     Globals.inGame = false;
@@ -67,10 +78,12 @@ async function init(): Promise<void> {
   app.stage.addChild(titleScene);
 
   function hideGameOverOverlay(): void {
+    gameOverScene.hidePrompt();
     if (gameOverScene.parent) app.stage.removeChild(gameOverScene);
   }
 
   function showGameOverOverlay(): void {
+    hideLeaderboardOverlay();
     skyScene.freeze();
     gameOverScene.refreshScores();
     if (!gameOverScene.parent) app.stage.addChild(gameOverScene);
@@ -78,8 +91,19 @@ async function init(): Promise<void> {
     skyScene.bringDebugOverlayToFront();
   }
 
+  function showLeaderboardOverlay(): void {
+    if (!leaderboardScene.parent) app.stage.addChild(leaderboardScene);
+    leaderboardScene.updateLayout();
+    void leaderboardScene.refresh();
+  }
+
+  function hideLeaderboardOverlay(): void {
+    if (leaderboardScene.parent) app.stage.removeChild(leaderboardScene);
+  }
+
   function switchTo(scene: Scene): void {
     hideGameOverOverlay();
+    hideLeaderboardOverlay();
     if ('stop' in currentScene && typeof currentScene.stop === 'function') {
       currentScene.stop();
     }
@@ -98,6 +122,7 @@ async function init(): Promise<void> {
     if (skyScene.parent) skyScene.updateLayout();
     if (titleScene.parent) titleScene.updateLayout();
     if (gameOverScene.parent) gameOverScene.updateLayout();
+    if (leaderboardScene.parent) leaderboardScene.updateLayout();
   });
 
   hideBootLoader();

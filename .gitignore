@@ -72,3 +72,4 @@ crashlytics-build.properties
 
 vite/node_modules/
 vite/dist/
+vite/data/
