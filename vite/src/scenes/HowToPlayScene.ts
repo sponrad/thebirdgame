@@ -34,8 +34,6 @@ const HOW_TO_PLAY_TEXT = [
   '',
   'Grab the stars birds drop to raise your multiplier.',
   '',
-  'Trace the arena border to paint it neon (Wax On), then trace again to wipe it (Wax Off) for big bonus points.',
-  '',
   'Don’t hit the birds. Survive and rack up the high score!',
 ].join('\n');
 
