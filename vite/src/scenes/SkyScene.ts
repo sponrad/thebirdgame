@@ -56,6 +56,8 @@ const HUD_STYLE = new TextStyle({
   fontFamily: 'sans-serif',
   fontSize: 22,
   fill: 0x1a1a1a,
+  fontWeight: 'bold',
+  stroke: { color: 0xffffff, width: 4, join: 'round' },
 });
 
 export class SkyScene extends Container {
@@ -190,14 +192,10 @@ export class SkyScene extends Container {
 
     this.scoreText = new Text({ text: '0', style: HUD_STYLE });
     this.scoreText.anchor.set(0, 0);
-    this.scoreText.x = 16;
-    this.scoreText.y = 16;
     this.addChild(this.scoreText);
 
     this.multiplierText = new Text({ text: 'x 1', style: HUD_STYLE });
-    this.multiplierText.anchor.set(0, 0);
-    this.multiplierText.x = 16;
-    this.multiplierText.y = 44;
+    this.multiplierText.anchor.set(1, 0);
     this.addChild(this.multiplierText);
 
     this.waxProgressText = new Text({
@@ -207,11 +205,14 @@ export class SkyScene extends Container {
         fontSize: 16,
         fill: 0x39ff14,
         fontWeight: 'bold',
+        stroke: { color: 0x111111, width: 3, join: 'round' },
       }),
     });
     this.waxProgressText.anchor.set(0.5, 1);
     this.waxProgressText.visible = false;
     this.addChild(this.waxProgressText);
+
+    this.layoutHud();
   }
 
   start(): void {
@@ -713,6 +714,16 @@ export class SkyScene extends Container {
     this.applyHudPunch();
   }
 
+  private layoutHud(): void {
+    const pad = 16;
+    this.scoreText.x = pad;
+    this.scoreText.y = pad;
+    this.multiplierText.x = this.app.screen.width - pad;
+    this.multiplierText.y = pad;
+    this.waxProgressText.x = this.app.screen.width / 2;
+    this.waxProgressText.y = this.app.screen.height - 14;
+  }
+
   private applyHudPunch(): void {
     const sp = this.juice.getScorePunch();
     const mp = this.juice.getMultPunch();
@@ -723,8 +734,6 @@ export class SkyScene extends Container {
   private handleWaxResult(wax: BorderUpdateResult): void {
     const sw = this.app.screen.width;
     const sh = this.app.screen.height;
-    this.waxProgressText.x = sw / 2;
-    this.waxProgressText.y = sh - 14;
 
     if (wax.revealActive) {
       this.waxProgressText.visible = true;
@@ -830,5 +839,6 @@ export class SkyScene extends Container {
 
   updateLayout(): void {
     this.updateWorldView();
+    this.layoutHud();
   }
 }
