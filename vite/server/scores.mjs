@@ -23,6 +23,12 @@ const MAX_UNIT_POINTS_PER_SEC = 2_500;
 /** Wax on+off budget scales with time (assumes a full cycle ~every 12s). */
 const WAX_CYCLE_SCORE = 40_000;
 const WAX_CYCLE_SEC = 12;
+/** Time needed to claim wax achievements (generous). */
+const MIN_WAX_ON_SEC = 8;
+const MIN_WAX_OFF_SEC = 16;
+
+const ACHIEVEMENT_IDS = ['waxOn', 'waxOff', 'noEntry'];
+const ACHIEVEMENT_SET = new Set(ACHIEVEMENT_IDS);
 
 const RATE_START = { windowMs: 60_000, max: 30 };
 const RATE_SUBMIT = { windowMs: 60_000, max: 12 };
@@ -149,11 +155,20 @@ function verifyRunToken(token) {
   }
 }
 
-/** Per-run HMAC proof: HMAC(salt, "submit|score|name|multiplier"). */
-function clientProof(salt, score, name, multiplier) {
+function sanitizeAchievements(raw) {
+  const src = Array.isArray(raw) ? raw : [];
+  return ACHIEVEMENT_IDS.filter((id) => src.includes(id) && ACHIEVEMENT_SET.has(id));
+}
+
+function encodeAchievements(ids) {
+  return sanitizeAchievements(ids).join(',');
+}
+
+/** Per-run HMAC proof: HMAC(salt, "submit|score|name|multiplier|achievements"). */
+function clientProof(salt, score, name, multiplier, achievements) {
   return crypto
     .createHmac('sha256', salt)
-    .update(`submit|${score}|${name}|${multiplier}`)
+    .update(`submit|${score}|${name}|${multiplier}|${encodeAchievements(achievements)}`)
     .digest('hex');
 }
 
@@ -177,10 +192,13 @@ function readAll() {
         if (!row || typeof row !== 'object') return null;
         const score = Math.floor(Number(row.score));
         if (!Number.isFinite(score) || score < 0) return null;
+        const multiplier = Math.floor(Number(row.multiplier));
         return {
           name: sanitizeName(row.name),
           score,
           at: Number.isFinite(Number(row.at)) ? Number(row.at) : 0,
+          multiplier: Number.isFinite(multiplier) && multiplier >= 1 ? multiplier : 1,
+          achievements: sanitizeAchievements(row.achievements),
         };
       })
       .filter(Boolean)
@@ -210,12 +228,13 @@ export function listScores() {
 }
 
 /**
- * @param {{ name: unknown, score: unknown, multiplier: unknown, token: unknown, proof: unknown }} body
+ * @param {{ name: unknown, score: unknown, multiplier: unknown, achievements: unknown, token: unknown, proof: unknown }} body
  */
 export function addScoreSecure(body) {
   const name = sanitizeName(body.name);
   const score = Math.floor(Number(body.score));
   const multiplier = Math.floor(Number(body.multiplier));
+  const achievements = sanitizeAchievements(body.achievements);
   const token = typeof body.token === 'string' ? body.token : '';
   const proof = typeof body.proof === 'string' ? body.proof : '';
 
@@ -250,7 +269,7 @@ export function addScoreSecure(body) {
     return { scores: listScores(), added: false, error: 'expired' };
   }
 
-  const expectProof = clientProof(meta.salt, score, name, multiplier);
+  const expectProof = clientProof(meta.salt, score, name, multiplier, achievements);
   if (!timingSafeEqualStr(expectProof, proof)) {
     return { scores: listScores(), added: false, error: 'bad_proof' };
   }
@@ -266,6 +285,15 @@ export function addScoreSecure(body) {
   if (score > maxPlausibleScore(elapsedSec, multiplier)) {
     return { scores: listScores(), added: false, error: 'implausible_pace' };
   }
+  if (achievements.includes('waxOff') && !achievements.includes('waxOn')) {
+    return { scores: listScores(), added: false, error: 'implausible_achievements' };
+  }
+  if (achievements.includes('waxOn') && elapsedSec < MIN_WAX_ON_SEC) {
+    return { scores: listScores(), added: false, error: 'implausible_achievements' };
+  }
+  if (achievements.includes('waxOff') && elapsedSec < MIN_WAX_OFF_SEC) {
+    return { scores: listScores(), added: false, error: 'implausible_achievements' };
+  }
 
   const current = listScores();
   const last = current[MAX_SCORES - 1];
@@ -276,7 +304,7 @@ export function addScoreSecure(body) {
   usedRuns.set(payload.rid, Date.now());
   runSecrets.delete(payload.rid);
 
-  const next = [...current, { name, score, at: Date.now() }]
+  const next = [...current, { name, score, multiplier, achievements, at: Date.now() }]
     .sort((a, b) => b.score - a.score || a.at - b.at)
     .slice(0, MAX_SCORES);
   writeAll(next);
@@ -309,6 +337,7 @@ const REJECT_400 = new Set([
   'too_fast',
   'implausible_pace',
   'implausible_multiplier',
+  'implausible_achievements',
   'invalid_score',
   'invalid_multiplier',
 ]);

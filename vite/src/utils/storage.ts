@@ -18,6 +18,8 @@ export type ScoreEntry = {
   score: number;
   name: string;
   at: number;
+  multiplier: number;
+  achievements: string[];
 };
 
 export function getSound(): boolean {

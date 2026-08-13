@@ -1,4 +1,5 @@
 import { sanitizeName, type ScoreEntry } from './storage';
+import { encodeAchievements, sanitizeAchievements } from '../game/achievements';
 
 export type { ScoreEntry };
 
@@ -26,7 +27,16 @@ function normalizeEntry(value: unknown): ScoreEntry | null {
   if (!Number.isFinite(score) || score < 0) return null;
   const name = typeof rec.name === 'string' ? rec.name : 'Pilot';
   const at = typeof rec.at === 'number' && Number.isFinite(rec.at) ? rec.at : 0;
-  return { score: Math.floor(score), name: sanitizeName(name), at };
+  const multiplierRaw = typeof rec.multiplier === 'number' ? rec.multiplier : Number(rec.multiplier);
+  const multiplier =
+    Number.isFinite(multiplierRaw) && multiplierRaw >= 1 ? Math.floor(multiplierRaw) : 1;
+  return {
+    score: Math.floor(score),
+    name: sanitizeName(name),
+    at,
+    multiplier,
+    achievements: sanitizeAchievements(rec.achievements),
+  };
 }
 
 async function hmacHex(key: string, message: string): Promise<string> {
@@ -86,7 +96,8 @@ export async function fetchScores(): Promise<ScoreEntry[]> {
 export async function submitScore(
   score: number,
   name: string,
-  multiplier: number
+  multiplier: number,
+  achievements: readonly string[] = []
 ): Promise<ScoreEntry[]> {
   const run = activeRun;
   if (!run) {
@@ -95,7 +106,11 @@ export async function submitScore(
   const safeName = sanitizeName(name);
   const safeScore = Math.floor(score);
   const safeMult = Math.max(1, Math.floor(multiplier));
-  const proof = await hmacHex(run.salt, `submit|${safeScore}|${safeName}|${safeMult}`);
+  const safeAchievements = sanitizeAchievements(achievements);
+  const proof = await hmacHex(
+    run.salt,
+    `submit|${safeScore}|${safeName}|${safeMult}|${encodeAchievements(safeAchievements)}`
+  );
 
   const res = await fetch('/api/scores', {
     method: 'POST',
@@ -104,6 +119,7 @@ export async function submitScore(
       score: safeScore,
       name: safeName,
       multiplier: safeMult,
+      achievements: safeAchievements,
       token: run.token,
       proof,
     }),

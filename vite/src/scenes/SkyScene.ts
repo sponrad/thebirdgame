@@ -788,6 +788,7 @@ export class SkyScene extends Container {
     }
 
     if (wax.waxOnComplete) {
+      Globals.achievements.waxOn = true;
       const pts = WAX_ON_SCORE * Globals.scoreMultiplier;
       Globals.score += pts;
       this.juice.banner(sw / 2, sh * 0.38, 'WAX ON!', 0x39ff14);
@@ -800,6 +801,7 @@ export class SkyScene extends Container {
     }
 
     if (wax.waxOffComplete) {
+      Globals.achievements.waxOff = true;
       const pts = WAX_OFF_SCORE * Globals.scoreMultiplier;
       Globals.score += pts;
       this.juice.banner(sw / 2, sh * 0.38, 'WAX OFF!', 0xffef3b);
@@ -859,6 +861,7 @@ export class SkyScene extends Container {
     }
 
     if (noEntryCount > 0) {
+      Globals.achievements.noEntry = true;
       const scale = this.worldContainer.scale.x;
       const sx = this.worldContainer.x + noEntryX * scale;
       const sy = this.worldContainer.y + noEntryY * scale;

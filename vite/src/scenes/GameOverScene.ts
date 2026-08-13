@@ -1,6 +1,6 @@
 import { Container, Graphics, Text, TextStyle } from 'pixi.js';
 import type { Application } from 'pixi.js';
-import { Globals } from '../game/Globals';
+import { earnedAchievements, Globals } from '../game/Globals';
 import { getLastName, setLastName, sanitizeName } from '../utils/storage';
 import { fetchScores, qualifiesForLeaderboard, submitScore, hasScoreRun } from '../utils/leaderboardApi';
 import { formatScore } from '../utils/format';
@@ -226,7 +226,7 @@ export class GameOverScene extends Container {
     this.updateLayout();
 
     try {
-      await submitScore(Globals.score, name, Globals.scoreMultiplier);
+      await submitScore(Globals.score, name, Globals.scoreMultiplier, earnedAchievements());
       setLastName(name);
       if (token !== this.promptToken) return;
       this.finishPrompt(`Saved as ${sanitizeName(name)}`);
