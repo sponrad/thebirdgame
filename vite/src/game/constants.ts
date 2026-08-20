@@ -139,6 +139,7 @@ export const WAX_ON_SCORE = 10000;
 export const WAX_OFF_SCORE = 30000;
 
 /** Painted noise cloud backdrop */
-export const CLOUD_SCROLL_SPEED_X = 0.35;
-export const CLOUD_SCROLL_SPEED_Y = 0.1;
+/** @deprecated Clouds are stationary (border perf). Kept for reference. */
+export const CLOUD_SCROLL_SPEED_X = 0;
+export const CLOUD_SCROLL_SPEED_Y = 0;
 export const CLOUD_LAYER_ALPHA = 0.85;

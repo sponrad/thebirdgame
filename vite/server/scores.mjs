@@ -328,6 +328,59 @@ function json(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
+/**
+ * Comma-separated allowlist via CORS_ORIGINS, plus built-in itch / localhost / site defaults.
+ * Set CORS_ORIGINS=* to reflect any Origin (still echoes the request Origin, never literal * with credentials).
+ */
+function corsAllowAll() {
+  return (process.env.CORS_ORIGINS || '').trim() === '*';
+}
+
+function corsExtraOrigins() {
+  const raw = process.env.CORS_ORIGINS || '';
+  if (!raw.trim() || raw.trim() === '*') return [];
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+const DEFAULT_CORS_ORIGINS = new Set([
+  'https://bird.devlabtech.com',
+  'https://html-classic.itch.zone',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:8080',
+  'http://127.0.0.1:8080',
+]);
+
+function isOriginAllowed(origin) {
+  if (!origin || typeof origin !== 'string') return false;
+  if (corsAllowAll()) return true;
+  if (DEFAULT_CORS_ORIGINS.has(origin)) return true;
+  if (corsExtraOrigins().includes(origin)) return true;
+  try {
+    const { protocol, hostname } = new URL(origin);
+    if (protocol !== 'http:' && protocol !== 'https:') return false;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') return true;
+    if (hostname === 'itch.zone' || hostname.endsWith('.itch.zone')) return true;
+    if (hostname === 'itch.io' || hostname.endsWith('.itch.io')) return true;
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+function applyCors(req, res) {
+  const origin = req.headers.origin;
+  if (typeof origin !== 'string' || !isOriginAllowed(origin)) return;
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Vary', 'Origin');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Max-Age', '86400');
+}
+
 const REJECT_400 = new Set([
   'invalid_token',
   'bad_proof',
@@ -346,9 +399,19 @@ const REJECT_400 = new Set([
 export async function handleScoresApi(req, res) {
   const url = (req.url || '').split('?')[0];
   const ip = clientIp(req);
+  const isRunStart = url === '/api/run/start' || url === '/api/run/start/';
+  const isScores = url === '/api/scores' || url === '/api/scores/';
+  if (!isRunStart && !isScores) return false;
+
+  applyCors(req, res);
+  if (req.method === 'OPTIONS') {
+    res.statusCode = 204;
+    res.end();
+    return true;
+  }
 
   try {
-    if (url === '/api/run/start' || url === '/api/run/start/') {
+    if (isRunStart) {
       if (req.method !== 'POST') {
         json(res, 405, { error: 'Method not allowed' });
         return true;
@@ -372,8 +435,6 @@ export async function handleScoresApi(req, res) {
       });
       return true;
     }
-
-    if (url !== '/api/scores' && url !== '/api/scores/') return false;
 
     if (req.method === 'GET') {
       json(res, 200, { scores: listScores() });

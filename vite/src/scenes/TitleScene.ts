@@ -10,6 +10,7 @@ import {
 import type { Application } from 'pixi.js';
 import { Globals } from '../game/Globals';
 import { setSound, setMusic, setLowPowerMode, setAntialias } from '../utils/storage';
+import { assetUrl } from '../utils/assetUrl';
 import { audioManager } from '../audio/AudioManager';
 import { canFullscreen, isFullscreen, toggleFullscreen, needsHomeScreenFullscreen, isCoarsePointerMobile } from '../utils/landscape';
 import { addButtonPressJuice } from '../game/Juice';
@@ -171,7 +172,7 @@ export class TitleScene extends Container {
     onHowToPlay: () => void
   ): Promise<TitleScene> {
     const scene = new TitleScene(app, onPlay, onLeaderboard, onHowToPlay);
-    const splashTexture = await Assets.load<Texture>('/sprites/icon-swooping-bird.png');
+    const splashTexture = await Assets.load<Texture>(assetUrl('sprites/icon-swooping-bird.png'));
     scene.build(splashTexture);
     return scene;
   }

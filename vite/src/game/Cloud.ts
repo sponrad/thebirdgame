@@ -1,10 +1,5 @@
 import { Container, Texture, TilingSprite } from 'pixi.js';
-import {
-  LEVEL_BOUNDS,
-  CLOUD_SCROLL_SPEED_X,
-  CLOUD_SCROLL_SPEED_Y,
-  CLOUD_LAYER_ALPHA,
-} from './constants';
+import { LEVEL_BOUNDS, CLOUD_LAYER_ALPHA } from './constants';
 
 /** Hash → [0,1) */
 function hash2(ix: number, iy: number, seed: number): number {
@@ -247,10 +242,6 @@ export class CloudBackground extends Container {
     this.y = (LEVEL_BOUNDS.minY + LEVEL_BOUNDS.maxY) * 0.5;
   }
 
-  update(dt: number): void {
-    this.far.tilePosition.x += CLOUD_SCROLL_SPEED_X * 0.45 * dt;
-    this.far.tilePosition.y += CLOUD_SCROLL_SPEED_Y * 0.35 * dt;
-    this.near.tilePosition.x += CLOUD_SCROLL_SPEED_X * dt;
-    this.near.tilePosition.y += CLOUD_SCROLL_SPEED_Y * dt;
-  }
+  /** Clouds stay fixed so the see-through border doesn't need continuous redraw. */
+  update(_dt: number): void {}
 }

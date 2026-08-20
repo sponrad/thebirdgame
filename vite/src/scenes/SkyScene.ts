@@ -15,6 +15,7 @@ import { Balloon } from '../game/Balloon';
 import { ConfettiSystem } from '../game/ConfettiSystem';
 import { JuiceSystem } from '../game/Juice';
 import { audioManager } from '../audio/AudioManager';
+import { assetUrl } from '../utils/assetUrl';
 import {
   LEVEL_BOUNDS,
   EXHAUST_SPAWN_INTERVAL,
@@ -80,7 +81,6 @@ export class SkyScene extends Container {
   private juice!: JuiceSystem;
   private border!: LevelBorder;
   private plane!: Plane;
-  private clouds: CloudBackground[] = [];
   private exhausts: Exhaust[] = [];
   private exhaustAccum = 0;
   private balloons: Balloon[] = [];
@@ -142,17 +142,17 @@ export class SkyScene extends Container {
   }
 
   private async loadAssets(): Promise<void> {
-    this.planeTexture = await Assets.load('/sprites/plane-side.png');
-    this.exhaustTexture = await Assets.load('/sprites/plane-exhaust-dash.png');
-    this.balloonTexture = await Assets.load('/sprites/balloon.png');
+    this.planeTexture = await Assets.load(assetUrl('sprites/plane-side.png'));
+    this.exhaustTexture = await Assets.load(assetUrl('sprites/plane-exhaust-dash.png'));
+    this.balloonTexture = await Assets.load(assetUrl('sprites/balloon.png'));
     this.birdFlapTextures = [
-      await Assets.load('/sprites/vultroso-standard.png'),
-      await Assets.load('/sprites/vultroso-midflap.png'),
-      await Assets.load('/sprites/vultroso-flap.png'),
-      await Assets.load('/sprites/vultroso-midflap.png'),
+      await Assets.load(assetUrl('sprites/vultroso-standard.png')),
+      await Assets.load(assetUrl('sprites/vultroso-midflap.png')),
+      await Assets.load(assetUrl('sprites/vultroso-flap.png')),
+      await Assets.load(assetUrl('sprites/vultroso-midflap.png')),
     ];
-    this.birdDeadTexture = await Assets.load('/sprites/vultroso-dead.png');
-    this.starTexture = await Assets.load('/sprites/star.png');
+    this.birdDeadTexture = await Assets.load(assetUrl('sprites/vultroso-dead.png'));
+    this.starTexture = await Assets.load(assetUrl('sprites/star.png'));
   }
 
   private build(): void {
@@ -163,7 +163,6 @@ export class SkyScene extends Container {
     this.worldContainer.addChild(this.cloudLayer);
     const sky = new CloudBackground();
     this.cloudLayer.addChild(sky);
-    this.clouds = [sky];
 
     this.border = new LevelBorder();
     this.worldContainer.addChild(this.border);
@@ -577,10 +576,6 @@ export class SkyScene extends Container {
     this.updateWorldView(dt);
     this.debugBirdCollisionChecks.length = 0;
     this.debugBalloonSweepPoints.length = 0;
-
-    for (const cloud of this.clouds) {
-      cloud.update(dt);
-    }
 
     this.exhaustAccum += dt;
     while (this.exhaustAccum >= EXHAUST_SPAWN_INTERVAL) {

@@ -1,9 +1,10 @@
 import { Globals } from '../game/Globals';
+import { assetUrl } from '../utils/assetUrl';
 import { AUDIO_FILES, MUSIC_FILE, type AudioCategory } from './audioKeys';
 
 /** MP3 — required for iOS / Brave (WebKit). */
 const AUDIO_EXT = '.mp3';
-const BASE = '/audio/';
+const BASE = assetUrl('audio/');
 
 /** Hard cap on simultaneous BufferSources in the graph. */
 const MAX_VOICES = 4;

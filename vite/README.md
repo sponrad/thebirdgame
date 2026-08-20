@@ -43,3 +43,13 @@ npm start
 ```
 
 Docker uses the same Node server (not nginx) so every visitor shares one leaderboard file. Persist `/data` across deploys if you want scores to survive container recreation.
+
+### itch.io (static HTML)
+
+```bash
+make itch
+```
+
+Builds with `VITE_API_BASE=https://bird.devlabtech.com` and writes `vite/the-bird-game-itch.zip` (`index.html` at the zip root). Override the API host with `make itch ITCH_API_BASE=https://example.com`.
+
+The API server already allows CORS from itch (`*.itch.zone` / `*.itch.io`) and localhost. Extra origins: set `CORS_ORIGINS` (comma-separated) on the server, or `CORS_ORIGINS=*` to allow any Origin.

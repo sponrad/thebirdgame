@@ -3,6 +3,15 @@ import { encodeAchievements, sanitizeAchievements } from '../game/achievements';
 
 export type { ScoreEntry };
 
+/** Empty = same origin. Set VITE_API_BASE for itch / static hosts (e.g. https://bird.devlabtech.com). */
+const API_BASE = String(import.meta.env.VITE_API_BASE ?? '')
+  .trim()
+  .replace(/\/+$/, '');
+
+function apiUrl(path: string): string {
+  return `${API_BASE}${path}`;
+}
+
 type RunSession = {
   token: string;
   salt: string;
@@ -55,7 +64,7 @@ async function hmacHex(key: string, message: string): Promise<string> {
 export async function startScoreRun(): Promise<void> {
   activeRun = null;
   try {
-    const res = await fetch('/api/run/start', {
+    const res = await fetch(apiUrl('/api/run/start'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: '{}',
@@ -89,7 +98,7 @@ export function hasScoreRun(): boolean {
 }
 
 export async function fetchScores(): Promise<ScoreEntry[]> {
-  const res = await fetch('/api/scores', { cache: 'no-store' });
+  const res = await fetch(apiUrl('/api/scores'), { cache: 'no-store' });
   return parseScores(res);
 }
 
@@ -112,7 +121,7 @@ export async function submitScore(
     `submit|${safeScore}|${safeName}|${safeMult}|${encodeAchievements(safeAchievements)}`
   );
 
-  const res = await fetch('/api/scores', {
+  const res = await fetch(apiUrl('/api/scores'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
