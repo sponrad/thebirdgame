@@ -21,13 +21,35 @@
         -webkit-touch-callout: none;
         -webkit-tap-highlight-color: transparent;
       }
+      :root {
+        --sat: env(safe-area-inset-top, constant(safe-area-inset-top, 0px));
+        --sar: env(safe-area-inset-right, constant(safe-area-inset-right, 0px));
+        --sab: env(safe-area-inset-bottom, constant(safe-area-inset-bottom, 0px));
+        --sal: env(safe-area-inset-left, constant(safe-area-inset-left, 0px));
+      }
       html, body {
         width: 100%;
         height: 100%;
         overflow: hidden;
-        background: #87ceeb;
+        background: #000;
         touch-action: none;
         overscroll-behavior: none;
+      }
+      /* Letterbox cutouts in CSS (reliable). Canvas resizes to the inner host only. */
+      #game-shell {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        box-sizing: border-box;
+        padding: var(--sat) var(--sar) var(--sab) var(--sal);
+        background: #000;
+      }
+      #game-host {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #87ceeb;
       }
       #game {
         display: block;
@@ -38,6 +60,16 @@
         user-select: none;
         -webkit-touch-callout: none;
         -webkit-user-drag: none;
+      }
+      /* Invisible probe — JS reads resolved padding (WebKit often won't resolve env() via custom props). */
+      #safe-area-probe {
+        position: fixed;
+        visibility: hidden;
+        pointer-events: none;
+        padding-top: var(--sat);
+        padding-right: var(--sar);
+        padding-bottom: var(--sab);
+        padding-left: var(--sal);
       }
       /* Extra hard lock while flying — kills iOS long-press callout / select bubbles. */
       body.gameplay-active,
@@ -182,11 +214,16 @@
     </style>
   </head>
   <body>
+    <div id="safe-area-probe" aria-hidden="true"></div>
     <div id="boot-loader" aria-live="polite" aria-busy="true">
       <div class="spinner" aria-hidden="true"></div>
       <p>Loading…</p>
     </div>
-    <canvas id="game"></canvas>
+    <div id="game-shell">
+      <div id="game-host">
+        <canvas id="game"></canvas>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

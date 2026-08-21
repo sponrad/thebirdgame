@@ -1,7 +1,7 @@
 import { Application } from 'pixi.js';
 import { Globals, resetForNewGame } from './game/Globals';
 import { getSound, getMusic, getHighScore, setHighScore, getLowPowerMode, getAntialias } from './utils/storage';
-import { isCoarsePointerMobile, setupMobileChrome } from './utils/landscape';
+import { isCoarsePointerMobile, setupMobileChrome, applySafeAreaShell } from './utils/landscape';
 import { audioManager } from './audio/AudioManager';
 import { startScoreRun } from './utils/leaderboardApi';
 import { TitleScene } from './scenes/TitleScene';
@@ -26,9 +26,10 @@ async function init(): Promise<void> {
   // Low power: fewer pixels + efficiency GPU hint. AA is independent.
   const resolution = Math.min(window.devicePixelRatio || 1, lowPower ? 1.25 : 2);
 
+  const gameHost = document.getElementById('game-host');
   await app.init({
     canvas: document.querySelector('#game') as HTMLCanvasElement,
-    resizeTo: window,
+    resizeTo: gameHost ?? window,
     backgroundColor: 0x87ceeb,
     antialias: Globals.antialias,
     autoDensity: true,
@@ -168,6 +169,9 @@ async function init(): Promise<void> {
   }
 
   const layoutAll = (): void => {
+    applySafeAreaShell();
+    // Padding changed the host size — resize now so scenes layout against the safe rect.
+    (app as Application & { resize?: () => void }).resize?.();
     if (skyScene.parent) skyScene.updateLayout();
     if (titleScene.parent) titleScene.updateLayout();
     if (gameOverScene.parent) gameOverScene.updateLayout();
@@ -181,10 +185,19 @@ async function init(): Promise<void> {
     requestAnimationFrame(() => {
       layoutAll();
       window.setTimeout(layoutAll, 150);
+      window.setTimeout(layoutAll, 400);
     });
   });
   window.visualViewport?.addEventListener('resize', layoutAll);
-  app.renderer.on('resize', layoutAll);
+  document.addEventListener('fullscreenchange', layoutAll);
+  document.addEventListener('webkitfullscreenchange', layoutAll);
+  app.renderer.on('resize', () => {
+    if (skyScene.parent) skyScene.updateLayout();
+    if (titleScene.parent) titleScene.updateLayout();
+    if (gameOverScene.parent) gameOverScene.updateLayout();
+    if (leaderboardScene.parent) leaderboardScene.updateLayout();
+    if (howToPlayScene.parent) howToPlayScene.updateLayout();
+  });
 
   hideBootLoader();
 }
