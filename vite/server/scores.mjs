@@ -183,36 +183,86 @@ function maxPlausibleScore(elapsedSec, multiplier) {
   return Math.floor(m * (MAX_UNIT_POINTS_PER_SEC * t + waxBudget));
 }
 
-function readAll() {
-  try {
-    const parsed = JSON.parse(fs.readFileSync(scoresFile(), 'utf8'));
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .map((row) => {
-        if (!row || typeof row !== 'object') return null;
-        const score = Math.floor(Number(row.score));
-        if (!Number.isFinite(score) || score < 0) return null;
-        const multiplier = Math.floor(Number(row.multiplier));
-        return {
-          name: sanitizeName(row.name),
-          score,
-          at: Number.isFinite(Number(row.at)) ? Number(row.at) : 0,
-          multiplier: Number.isFinite(multiplier) && multiplier >= 1 ? multiplier : 1,
-          achievements: sanitizeAchievements(row.achievements),
-        };
-      })
-      .filter(Boolean)
-      .sort((a, b) => b.score - a.score || a.at - b.at)
-      .slice(0, MAX_SCORES);
-  } catch {
-    return [];
-  }
+const MONTH_KEY_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+/** UTC calendar month, e.g. "2026-09". */
+export function monthKey(ms = Date.now()) {
+  const d = new Date(ms);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
-function writeAll(scores) {
+export function isMonthKey(value) {
+  return typeof value === 'string' && MONTH_KEY_RE.test(value);
+}
+
+function normalizeRow(row) {
+  if (!row || typeof row !== 'object') return null;
+  const score = Math.floor(Number(row.score));
+  if (!Number.isFinite(score) || score < 0) return null;
+  const multiplier = Math.floor(Number(row.multiplier));
+  return {
+    name: sanitizeName(row.name),
+    score,
+    at: Number.isFinite(Number(row.at)) ? Number(row.at) : 0,
+    multiplier: Number.isFinite(multiplier) && multiplier >= 1 ? multiplier : 1,
+    achievements: sanitizeAchievements(row.achievements),
+  };
+}
+
+function topScores(rows) {
+  return (Array.isArray(rows) ? rows : [])
+    .map(normalizeRow)
+    .filter(Boolean)
+    .sort((a, b) => b.score - a.score || a.at - b.at)
+    .slice(0, MAX_SCORES);
+}
+
+/**
+ * File format: { allTime: Entry[], months: { "YYYY-MM": Entry[] } }.
+ * Legacy files are a bare all-time array; those rows are also bucketed into months by `at`.
+ */
+function readBoard() {
+  let parsed;
+  try {
+    parsed = JSON.parse(fs.readFileSync(scoresFile(), 'utf8'));
+  } catch {
+    return { allTime: [], months: {} };
+  }
+
+  if (Array.isArray(parsed)) {
+    const allTime = topScores(parsed);
+    /** @type {Record<string, unknown[]>} */
+    const buckets = {};
+    for (const row of allTime) {
+      if (row.at <= 0) continue;
+      (buckets[monthKey(row.at)] ??= []).push(row);
+    }
+    const months = {};
+    for (const [key, rows] of Object.entries(buckets)) months[key] = topScores(rows);
+    return { allTime, months };
+  }
+
+  if (!parsed || typeof parsed !== 'object') return { allTime: [], months: {} };
+  const months = {};
+  const rawMonths = parsed.months && typeof parsed.months === 'object' ? parsed.months : {};
+  for (const [key, rows] of Object.entries(rawMonths)) {
+    if (!isMonthKey(key)) continue;
+    const top = topScores(rows);
+    if (top.length > 0) months[key] = top;
+  }
+  return { allTime: topScores(parsed.allTime), months };
+}
+
+function writeBoard(board) {
   const file = scoresFile();
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(scores));
+  fs.writeFileSync(file, JSON.stringify(board));
+}
+
+function qualifies(score, scores) {
+  if (scores.length < MAX_SCORES) return true;
+  const last = scores[scores.length - 1];
+  return !last || score > last.score;
 }
 
 export function sanitizeName(raw) {
@@ -223,8 +273,28 @@ export function sanitizeName(raw) {
   return cleaned || DEFAULT_NAME;
 }
 
-export function listScores() {
-  return readAll();
+/**
+ * `scores` is the all-time board (the shape older clients read); `month` is the requested
+ * month's board, and `months` lists every month with scores, newest first.
+ */
+function leaderboardView(board = readBoard(), requestedMonth) {
+  const currentMonth = monthKey();
+  const key = isMonthKey(requestedMonth) ? requestedMonth : currentMonth;
+  const months = [...new Set([currentMonth, ...Object.keys(board.months)])].sort().reverse();
+  return {
+    scores: board.allTime,
+    month: { key, scores: board.months[key] ?? [] },
+    currentMonth,
+    months,
+  };
+}
+
+export function getLeaderboard(requestedMonth) {
+  return leaderboardView(readBoard(), requestedMonth);
+}
+
+function rejected(error) {
+  return { ...leaderboardView(), added: false, error };
 }
 
 /**
@@ -239,76 +309,78 @@ export function addScoreSecure(body) {
   const proof = typeof body.proof === 'string' ? body.proof : '';
 
   if (!Number.isFinite(score) || score <= 0 || score > Number.MAX_SAFE_INTEGER) {
-    return { scores: listScores(), added: false, error: 'invalid_score' };
+    return rejected('invalid_score');
   }
   if (!Number.isFinite(multiplier) || multiplier < 1 || multiplier > 1_000_000) {
-    return { scores: listScores(), added: false, error: 'invalid_multiplier' };
+    return rejected('invalid_multiplier');
   }
 
   const payload = verifyRunToken(token);
   if (!payload) {
-    return { scores: listScores(), added: false, error: 'invalid_token' };
+    return rejected('invalid_token');
   }
 
   const nowSec = Math.floor(Date.now() / 1000);
   pruneMaps(nowSec);
 
   if (nowSec - payload.iat < MIN_RUN_SEC) {
-    return { scores: listScores(), added: false, error: 'too_fast' };
+    return rejected('too_fast');
   }
   if (nowSec - payload.iat > RUN_TTL_SEC) {
-    return { scores: listScores(), added: false, error: 'expired' };
+    return rejected('expired');
   }
 
   const meta = runSecrets.get(payload.rid);
   if (!meta) {
-    return { scores: listScores(), added: false, error: 'unknown_run' };
+    return rejected('unknown_run');
   }
   if (meta.exp < nowSec) {
     runSecrets.delete(payload.rid);
-    return { scores: listScores(), added: false, error: 'expired' };
+    return rejected('expired');
   }
 
   const expectProof = clientProof(meta.salt, score, name, multiplier, achievements);
   if (!timingSafeEqualStr(expectProof, proof)) {
-    return { scores: listScores(), added: false, error: 'bad_proof' };
+    return rejected('bad_proof');
   }
 
   if (usedRuns.has(payload.rid)) {
-    return { scores: listScores(), added: false, error: 'already_used' };
+    return rejected('already_used');
   }
 
   const elapsedSec = Math.max(1, nowSec - payload.iat);
   if (multiplier > maxPlausibleMultiplier(elapsedSec)) {
-    return { scores: listScores(), added: false, error: 'implausible_multiplier' };
+    return rejected('implausible_multiplier');
   }
   if (score > maxPlausibleScore(elapsedSec, multiplier)) {
-    return { scores: listScores(), added: false, error: 'implausible_pace' };
+    return rejected('implausible_pace');
   }
   if (achievements.includes('waxOff') && !achievements.includes('waxOn')) {
-    return { scores: listScores(), added: false, error: 'implausible_achievements' };
+    return rejected('implausible_achievements');
   }
   if (achievements.includes('waxOn') && elapsedSec < MIN_WAX_ON_SEC) {
-    return { scores: listScores(), added: false, error: 'implausible_achievements' };
+    return rejected('implausible_achievements');
   }
   if (achievements.includes('waxOff') && elapsedSec < MIN_WAX_OFF_SEC) {
-    return { scores: listScores(), added: false, error: 'implausible_achievements' };
+    return rejected('implausible_achievements');
   }
 
-  const current = listScores();
-  const last = current[MAX_SCORES - 1];
-  if (current.length >= MAX_SCORES && last && score <= last.score) {
-    return { scores: current, added: false, error: 'not_high_enough' };
+  const board = readBoard();
+  const now = Date.now();
+  const month = monthKey(now);
+  const monthScores = board.months[month] ?? [];
+  if (!qualifies(score, board.allTime) && !qualifies(score, monthScores)) {
+    return { ...leaderboardView(board), added: false, error: 'not_high_enough' };
   }
 
-  usedRuns.set(payload.rid, Date.now());
+  usedRuns.set(payload.rid, now);
   runSecrets.delete(payload.rid);
 
-  const next = [...current, { name, score, multiplier, achievements, at: Date.now() }]
-    .sort((a, b) => b.score - a.score || a.at - b.at)
-    .slice(0, MAX_SCORES);
-  writeAll(next);
-  return { scores: next, added: true };
+  const entry = { name, score, multiplier, achievements, at: now };
+  board.allTime = topScores([...board.allTime, entry]);
+  board.months[month] = topScores([...monthScores, entry]);
+  writeBoard(board);
+  return { ...leaderboardView(board), added: true };
 }
 
 async function readJsonBody(req) {
@@ -437,7 +509,8 @@ export async function handleScoresApi(req, res) {
     }
 
     if (req.method === 'GET') {
-      json(res, 200, { scores: listScores() });
+      const month = new URLSearchParams((req.url || '').split('?')[1] || '').get('month');
+      json(res, 200, getLeaderboard(month ?? undefined));
       return true;
     }
     if (req.method === 'POST') {
@@ -448,12 +521,8 @@ export async function handleScoresApi(req, res) {
       }
       const body = await readJsonBody(req);
       const result = addScoreSecure(body);
-      if (!result.added && result.error) {
-        const status = REJECT_400.has(result.error) ? 400 : 200;
-        json(res, status, { scores: result.scores, added: false, error: result.error });
-        return true;
-      }
-      json(res, 200, { scores: result.scores, added: result.added });
+      const status = result.error && REJECT_400.has(result.error) ? 400 : 200;
+      json(res, status, result);
       return true;
     }
     json(res, 405, { error: 'Method not allowed' });

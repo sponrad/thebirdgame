@@ -1,7 +1,12 @@
 import { Container, Graphics, Rectangle, Text, TextStyle } from 'pixi.js';
 import type { Application } from 'pixi.js';
 import { MAX_SCORES } from '../utils/storage';
-import { fetchScores, type ScoreEntry } from '../utils/leaderboardApi';
+import {
+  fetchLeaderboard,
+  formatMonthKey,
+  type LeaderboardData,
+  type ScoreEntry,
+} from '../utils/leaderboardApi';
 import { formatScore } from '../utils/format';
 import { addButtonPressJuice } from '../game/Juice';
 import {
@@ -13,6 +18,13 @@ import {
 const TITLE_STYLE = new TextStyle({
   fontFamily: 'Arial, Helvetica, sans-serif',
   fontSize: 28,
+  fill: 0x111111,
+  fontWeight: 'bold',
+});
+
+const SECTION_STYLE = new TextStyle({
+  fontFamily: 'Arial, Helvetica, sans-serif',
+  fontSize: 20,
   fill: 0x111111,
   fontWeight: 'bold',
 });
@@ -62,6 +74,14 @@ const ICON_SIZE = 18;
 const ICON_GAP = 4;
 const ACH_COL_W = ICON_SIZE * 3 + ICON_GAP * 2;
 const MULT_COL_W = 40;
+const NAME_X = 28;
+
+const ROW_H = 32;
+const SECTION_H = 34;
+const HEADER_H = 24;
+const EMPTY_H = 72;
+/** Screens at least this wide show the two boards side by side. */
+const TWO_COLUMN_MIN_W = 760;
 
 const ICON_GLYPH_STYLE = new TextStyle({
   fontFamily: 'Arial, Helvetica, sans-serif',
@@ -84,6 +104,11 @@ type ScoreRow = {
   score: Text;
   mult: Text;
   ach: Container;
+};
+
+type IconTipHandlers = {
+  show: (icon: Container, id: AchievementId, pinned: boolean) => void;
+  hoverEnd: () => void;
 };
 
 function makeAchievementIcon(id: AchievementId): Container {
@@ -120,27 +145,178 @@ function makeButton(label: string, width: number, height: number): Container {
   return btn;
 }
 
-/** Overlay listing shared top scores. Scrolls when the list is taller than the screen. */
+function setButtonEnabled(btn: Container, enabled: boolean): void {
+  btn.eventMode = enabled ? 'static' : 'none';
+  btn.alpha = enabled ? 1 : 0.3;
+}
+
+/** One ranked board: a title row, column headers, and up to MAX_SCORES rows. */
+class ScoreTable extends Container {
+  private titleRow: Container;
+  private headerRank: Text;
+  private headerName: Text;
+  private headerScore: Text;
+  private rows: ScoreRow[] = [];
+  private emptyText: Text;
+  private tips: IconTipHandlers;
+  private tableW = 0;
+
+  constructor(titleRow: Container, tips: IconTipHandlers) {
+    super();
+    this.titleRow = titleRow;
+    this.tips = tips;
+    this.addChild(titleRow);
+
+    this.headerRank = new Text({ text: '#', style: HEADER_STYLE });
+    this.headerName = new Text({ text: 'Name', style: HEADER_STYLE });
+    this.headerScore = new Text({ text: 'Score', style: HEADER_STYLE });
+    this.headerScore.anchor.set(1, 0);
+    this.addChild(this.headerRank, this.headerName, this.headerScore);
+
+    this.emptyText = new Text({ text: '', style: EMPTY_STYLE });
+    this.emptyText.anchor.set(0.5);
+    this.addChild(this.emptyText);
+
+    for (let i = 0; i < MAX_SCORES; i++) {
+      const root = new Container();
+      const rank = new Text({ text: '', style: RANK_STYLE });
+      const name = new Text({ text: '', style: NAME_STYLE });
+      const score = new Text({ text: '', style: SCORE_STYLE });
+      score.anchor.set(1, 0);
+      const mult = new Text({ text: '', style: SCORE_STYLE });
+      mult.anchor.set(1, 0);
+      const ach = new Container();
+      root.addChild(rank, name, score, mult, ach);
+      this.rows.push({ root, rank, name, score, mult, ach });
+      this.addChild(root);
+    }
+  }
+
+  showStatus(message: string): void {
+    this.emptyText.text = message;
+    this.emptyText.visible = true;
+    this.setHeadersVisible(false);
+    for (const row of this.rows) row.root.visible = false;
+  }
+
+  showScores(scores: ScoreEntry[], emptyMessage: string): void {
+    this.emptyText.text = emptyMessage;
+    this.emptyText.visible = scores.length === 0;
+    this.setHeadersVisible(scores.length > 0);
+
+    for (let i = 0; i < this.rows.length; i++) {
+      const entry = scores[i];
+      const row = this.rows[i]!;
+      if (!entry) {
+        row.root.visible = false;
+        continue;
+      }
+      row.root.visible = true;
+      row.rank.text = String(i + 1);
+      row.name.text = entry.name;
+      row.score.text = formatScore(entry.score);
+      row.mult.text = `x${entry.multiplier}`;
+      this.fillAchievementIcons(row.ach, sanitizeAchievements(entry.achievements));
+    }
+    this.layoutRows();
+  }
+
+  /** Positions everything for `width`; returns the table height. */
+  layout(width: number): number {
+    this.tableW = width;
+    this.titleRow.x = width / 2;
+    this.titleRow.y = 0;
+
+    const scoreX = this.scoreColumnX();
+    this.headerRank.x = 0;
+    this.headerName.x = NAME_X;
+    this.headerScore.x = scoreX;
+    this.headerRank.y = SECTION_H;
+    this.headerName.y = SECTION_H;
+    this.headerScore.y = SECTION_H;
+
+    this.emptyText.x = width / 2;
+    this.emptyText.y = SECTION_H + EMPTY_H / 2;
+
+    this.layoutRows();
+
+    if (this.emptyText.visible) return SECTION_H + EMPTY_H;
+    const visibleRows = this.rows.filter((r) => r.root.visible).length;
+    return SECTION_H + HEADER_H + Math.max(1, visibleRows) * ROW_H;
+  }
+
+  private scoreColumnX(): number {
+    const achX = this.tableW - ACH_COL_W;
+    const multX = achX - 8;
+    return multX - MULT_COL_W - 8;
+  }
+
+  private layoutRows(): void {
+    const achX = this.tableW - ACH_COL_W;
+    const multX = achX - 8;
+    const scoreX = this.scoreColumnX();
+    for (let i = 0; i < this.rows.length; i++) {
+      const row = this.rows[i]!;
+      row.root.x = 0;
+      row.root.y = SECTION_H + HEADER_H + i * ROW_H;
+      row.rank.x = 0;
+      row.name.x = NAME_X;
+      row.score.x = scoreX;
+      row.mult.x = multX;
+      row.ach.x = achX;
+
+      // Squeeze long names so they never run into the score.
+      row.name.scale.set(1);
+      const maxNameW = scoreX - row.score.width - 8 - NAME_X;
+      if (row.name.width > maxNameW && maxNameW > 0) {
+        row.name.scale.set(maxNameW / row.name.width);
+      }
+    }
+  }
+
+  private setHeadersVisible(visible: boolean): void {
+    this.headerRank.visible = visible;
+    this.headerName.visible = visible;
+    this.headerScore.visible = visible;
+  }
+
+  private fillAchievementIcons(holder: Container, ids: AchievementId[]): void {
+    holder.removeChildren();
+    for (let i = 0; i < ids.length; i++) {
+      const id = ids[i]!;
+      const icon = makeAchievementIcon(id);
+      icon.x = i * (ICON_SIZE + ICON_GAP);
+      icon.y = 2;
+      icon.on('pointerover', () => this.tips.show(icon, id, false));
+      icon.on('pointerout', () => this.tips.hoverEnd());
+      icon.on('pointerdown', (e: { stopPropagation: () => void }) => {
+        e.stopPropagation();
+        this.tips.show(icon, id, true);
+      });
+      holder.addChild(icon);
+    }
+  }
+}
+
+/** Overlay listing shared all-time and monthly top scores. Scrolls when taller than the screen. */
 export class LeaderboardScene extends Container {
   private app: Application;
   private onBack: () => void;
   private dim!: Graphics;
   private card!: Graphics;
   private title!: Text;
-  private headerRank!: Text;
-  private headerName!: Text;
-  private headerScore!: Text;
-  private headerMult!: Text;
-  private headerAch!: Text;
+  private allTimeTable!: ScoreTable;
+  private monthTable!: ScoreTable;
+  private monthLabel!: Text;
+  private prevMonthBtn!: Container;
+  private nextMonthBtn!: Container;
   private tooltip!: Container;
   private tooltipBg!: Graphics;
   private tooltipText!: Text;
   private tooltipPinned = false;
-  private emptyText!: Text;
   private listClip!: Container;
   private listMask!: Graphics;
   private listContent!: Container;
-  private rows: ScoreRow[] = [];
   private backBtn!: Container;
   private scrollY = 0;
   private maxScroll = 0;
@@ -149,6 +325,11 @@ export class LeaderboardScene extends Container {
   private dragging = false;
   private dragStartY = 0;
   private dragStartScroll = 0;
+  /** Months with scores, newest first. */
+  private months: string[] = [];
+  private monthKey = '';
+  private currentMonth = '';
+  private loadToken = 0;
 
   constructor(app: Application, onBack: () => void) {
     super();
@@ -167,19 +348,6 @@ export class LeaderboardScene extends Container {
     this.title.anchor.set(0.5, 0);
     this.addChild(this.title);
 
-    this.headerRank = new Text({ text: '#', style: HEADER_STYLE });
-    this.headerName = new Text({ text: 'Name', style: HEADER_STYLE });
-    this.headerScore = new Text({ text: 'Score', style: HEADER_STYLE });
-    this.headerScore.anchor.set(1, 0);
-    this.headerMult = new Text({ text: '', style: HEADER_STYLE });
-    this.headerMult.anchor.set(1, 0);
-    this.headerAch = new Text({ text: '', style: HEADER_STYLE });
-    this.addChild(this.headerRank);
-    this.addChild(this.headerName);
-    this.addChild(this.headerScore);
-    this.addChild(this.headerMult);
-    this.addChild(this.headerAch);
-
     this.listClip = new Container();
     this.listClip.eventMode = 'static';
     this.listClip.cursor = 'default';
@@ -192,23 +360,34 @@ export class LeaderboardScene extends Container {
     this.listContent = new Container();
     this.listClip.addChild(this.listContent);
 
-    this.emptyText = new Text({ text: 'No scores yet\nPlay a round!', style: EMPTY_STYLE });
-    this.emptyText.anchor.set(0.5);
-    this.listContent.addChild(this.emptyText);
+    const tips: IconTipHandlers = {
+      show: (icon, id, pinned) => this.showAchievementTip(icon, id, pinned),
+      hoverEnd: () => {
+        if (!this.tooltipPinned) this.hideTooltip();
+      },
+    };
 
-    for (let i = 0; i < MAX_SCORES; i++) {
-      const root = new Container();
-      const rank = new Text({ text: '', style: RANK_STYLE });
-      const name = new Text({ text: '', style: NAME_STYLE });
-      const score = new Text({ text: '', style: SCORE_STYLE });
-      score.anchor.set(1, 0);
-      const mult = new Text({ text: '', style: SCORE_STYLE });
-      mult.anchor.set(1, 0);
-      const ach = new Container();
-      root.addChild(rank, name, score, mult, ach);
-      this.rows.push({ root, rank, name, score, mult, ach });
-      this.listContent.addChild(root);
-    }
+    const allTimeTitle = new Text({ text: 'All-Time', style: SECTION_STYLE });
+    allTimeTitle.anchor.set(0.5, 0);
+    this.allTimeTable = new ScoreTable(allTimeTitle, tips);
+    this.listContent.addChild(this.allTimeTable);
+
+    const monthNav = new Container();
+    this.monthLabel = new Text({ text: 'This Month', style: SECTION_STYLE });
+    this.monthLabel.anchor.set(0.5, 0);
+    this.prevMonthBtn = makeButton('‹', 30, 26);
+    this.nextMonthBtn = makeButton('›', 30, 26);
+    this.prevMonthBtn.on('pointerdown', (e: { stopPropagation: () => void }) => {
+      e.stopPropagation();
+      this.stepMonth(1);
+    });
+    this.nextMonthBtn.on('pointerdown', (e: { stopPropagation: () => void }) => {
+      e.stopPropagation();
+      this.stepMonth(-1);
+    });
+    monthNav.addChild(this.monthLabel, this.prevMonthBtn, this.nextMonthBtn);
+    this.monthTable = new ScoreTable(monthNav, tips);
+    this.listContent.addChild(this.monthTable);
 
     this.tooltip = new Container();
     this.tooltip.visible = false;
@@ -234,79 +413,79 @@ export class LeaderboardScene extends Container {
     this.listClip.on('pointercancel', this.onDragEnd);
     this.app.canvas.addEventListener('wheel', this.onWheel, { passive: false });
 
-    this.showStatus('No scores yet\nPlay a round!');
+    this.allTimeTable.showStatus('No scores yet\nPlay a round!');
+    this.monthTable.showStatus('No scores yet\nPlay a round!');
+    this.updateMonthNav();
     this.updateLayout();
   }
 
+  /** Reload both boards, resetting the month view to the current month. */
   async refresh(): Promise<void> {
     this.scrollY = 0;
-    this.showStatus('Loading…');
+    this.monthKey = '';
+    this.allTimeTable.showStatus('Loading…');
+    this.monthTable.showStatus('Loading…');
+    this.hideTooltip();
+    this.updateMonthNav();
     this.updateLayout();
-    try {
-      const scores = await fetchScores();
-      this.showScores(scores);
-    } catch {
-      this.showStatus('Couldn’t load scores');
-    }
+    await this.load(undefined, true);
     this.scrollY = 0;
     this.updateLayout();
   }
 
-  private showStatus(message: string): void {
-    this.emptyText.text = message;
-    this.emptyText.visible = true;
-    this.headerRank.visible = false;
-    this.headerName.visible = false;
-    this.headerScore.visible = false;
-    this.headerMult.visible = false;
-    this.headerAch.visible = false;
+  /** `direction` 1 = older month, -1 = newer month. */
+  private stepMonth(direction: 1 | -1): void {
     this.hideTooltip();
-    for (const row of this.rows) row.root.visible = false;
+    const idx = this.months.indexOf(this.monthKey);
+    const target = idx < 0 ? undefined : this.months[idx + direction];
+    if (!target) return;
+    this.monthKey = target;
+    this.monthTable.showStatus('Loading…');
+    this.updateMonthNav();
+    this.updateLayout();
+    void this.load(target, false);
   }
 
-  private showScores(scores: ScoreEntry[]): void {
-    this.emptyText.text = 'No scores yet\nPlay a round!';
-    this.emptyText.visible = scores.length === 0;
-    this.headerRank.visible = scores.length > 0;
-    this.headerName.visible = scores.length > 0;
-    this.headerScore.visible = scores.length > 0;
-    this.headerMult.visible = scores.length > 0;
-    this.headerAch.visible = scores.length > 0;
-    this.hideTooltip();
-
-    for (let i = 0; i < this.rows.length; i++) {
-      const entry = scores[i];
-      const row = this.rows[i]!;
-      if (!entry) {
-        row.root.visible = false;
-        continue;
-      }
-      row.root.visible = true;
-      row.rank.text = String(i + 1);
-      row.name.text = entry.name;
-      row.score.text = formatScore(entry.score);
-      row.mult.text = `x${entry.multiplier}`;
-      this.fillAchievementIcons(row.ach, sanitizeAchievements(entry.achievements));
+  private async load(month: string | undefined, allTimeFailsToo: boolean): Promise<void> {
+    const token = ++this.loadToken;
+    try {
+      const board = await fetchLeaderboard(month);
+      if (token !== this.loadToken) return;
+      this.applyBoard(board);
+    } catch {
+      if (token !== this.loadToken) return;
+      if (allTimeFailsToo) this.allTimeTable.showStatus('Couldn’t load scores');
+      this.monthTable.showStatus('Couldn’t load scores');
     }
+    this.updateLayout();
   }
 
-  private fillAchievementIcons(holder: Container, ids: AchievementId[]): void {
-    holder.removeChildren();
-    for (let i = 0; i < ids.length; i++) {
-      const id = ids[i]!;
-      const icon = makeAchievementIcon(id);
-      icon.x = i * (ICON_SIZE + ICON_GAP);
-      icon.y = 2;
-      icon.on('pointerover', () => this.showAchievementTip(icon, id, false));
-      icon.on('pointerout', () => {
-        if (!this.tooltipPinned) this.hideTooltip();
-      });
-      icon.on('pointerdown', (e: { stopPropagation: () => void }) => {
-        e.stopPropagation();
-        this.showAchievementTip(icon, id, true);
-      });
-      holder.addChild(icon);
-    }
+  private applyBoard(board: LeaderboardData): void {
+    this.months = board.months;
+    this.monthKey = board.monthKey;
+    this.currentMonth = board.currentMonth;
+    this.allTimeTable.showScores(board.allTime, 'No scores yet\nPlay a round!');
+    const isCurrent = board.monthKey === board.currentMonth;
+    this.monthTable.showScores(
+      board.month,
+      isCurrent ? 'No scores this month\nPlay a round!' : 'No scores this month'
+    );
+    this.updateMonthNav();
+  }
+
+  private updateMonthNav(): void {
+    const isCurrent = !this.monthKey || this.monthKey === this.currentMonth;
+    this.monthLabel.text = isCurrent ? 'This Month' : formatMonthKey(this.monthKey);
+    const idx = this.months.indexOf(this.monthKey);
+    setButtonEnabled(this.prevMonthBtn, idx >= 0 && idx < this.months.length - 1);
+    setButtonEnabled(this.nextMonthBtn, idx > 0);
+
+    const armX = this.monthLabel.width / 2 + 24;
+    const midY = this.monthLabel.height / 2;
+    this.prevMonthBtn.x = -armX;
+    this.nextMonthBtn.x = armX;
+    this.prevMonthBtn.y = midY;
+    this.nextMonthBtn.y = midY;
   }
 
   private showAchievementTip(icon: Container, id: AchievementId, pinned: boolean): void {
@@ -342,16 +521,36 @@ export class LeaderboardScene extends Container {
 
     const padX = 22;
     const padTop = 16;
-    const rowH = 32;
     const titleBlock = 40;
-    const headerH = 24;
     const btnH = 44;
     const padBot = 14;
-    const chromeH = padTop + titleBlock + headerH + btnH + padBot + 10;
-    const visibleRows = this.rows.filter((r) => r.root.visible).length;
-    this.contentH = this.emptyText.visible ? 72 : Math.max(1, visibleRows) * rowH;
+    const colGap = 28;
+    const stackGap = 18;
+    const chromeH = padTop + titleBlock + btnH + padBot + 10;
 
-    const cardW = Math.min(460, w - 28);
+    const twoColumn = w >= TWO_COLUMN_MIN_W;
+    const cardW = twoColumn ? Math.min(900, w - 28) : Math.min(460, w - 28);
+    const innerW = cardW - padX * 2;
+
+    if (twoColumn) {
+      const colW = (innerW - colGap) / 2;
+      const allTimeH = this.allTimeTable.layout(colW);
+      const monthH = this.monthTable.layout(colW);
+      this.allTimeTable.x = padX;
+      this.allTimeTable.y = 0;
+      this.monthTable.x = padX + colW + colGap;
+      this.monthTable.y = 0;
+      this.contentH = Math.max(allTimeH, monthH);
+    } else {
+      const allTimeH = this.allTimeTable.layout(innerW);
+      const monthH = this.monthTable.layout(innerW);
+      this.allTimeTable.x = padX;
+      this.allTimeTable.y = 0;
+      this.monthTable.x = padX;
+      this.monthTable.y = allTimeH + stackGap;
+      this.contentH = allTimeH + stackGap + monthH;
+    }
+
     const maxCardH = Math.max(chromeH + 48, h - 24);
     this.listViewportH = Math.min(this.contentH, Math.max(48, maxCardH - chromeH));
     const cardH = chromeH + this.listViewportH;
@@ -368,22 +567,7 @@ export class LeaderboardScene extends Container {
     this.title.x = w / 2;
     this.title.y = cardY + padTop;
 
-    const headerY = cardY + padTop + titleBlock;
-    const achX = cardX + cardW - padX - ACH_COL_W;
-    const multX = achX - 8;
-    const scoreX = multX - MULT_COL_W - 8;
-    this.headerRank.x = cardX + padX;
-    this.headerName.x = cardX + padX + 28;
-    this.headerScore.x = scoreX;
-    this.headerMult.x = multX;
-    this.headerAch.x = achX;
-    this.headerRank.y = headerY;
-    this.headerName.y = headerY;
-    this.headerScore.y = headerY;
-    this.headerMult.y = headerY;
-    this.headerAch.y = headerY;
-
-    const listTop = headerY + headerH;
+    const listTop = cardY + padTop + titleBlock;
     this.listClip.x = cardX;
     this.listClip.y = listTop;
     this.listClip.hitArea = new Rectangle(0, 0, cardW, this.listViewportH);
@@ -393,23 +577,6 @@ export class LeaderboardScene extends Container {
     this.listMask.rect(0, 0, cardW, this.listViewportH).fill({ color: 0xffffff });
 
     this.listContent.y = -this.scrollY;
-
-    this.emptyText.x = cardW / 2;
-    this.emptyText.y = this.contentH / 2;
-
-    const achLocalX = cardW - padX - ACH_COL_W;
-    const multLocalX = achLocalX - 8;
-    const scoreLocalX = multLocalX - MULT_COL_W - 8;
-    for (let i = 0; i < this.rows.length; i++) {
-      const row = this.rows[i]!;
-      row.root.x = 0;
-      row.root.y = i * rowH;
-      row.rank.x = padX;
-      row.name.x = padX + 28;
-      row.score.x = scoreLocalX;
-      row.mult.x = multLocalX;
-      row.ach.x = achLocalX;
-    }
 
     this.backBtn.x = w / 2;
     this.backBtn.y = cardY + cardH - padBot - btnH / 2;

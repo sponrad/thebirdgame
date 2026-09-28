@@ -28,7 +28,7 @@ Run this once after clone, or whenever Unity assets change. The Unity `Assets/` 
 npm run dev
 ```
 
-Open the URL shown in the terminal (usually http://localhost:5173). Dev also serves the shared leaderboard at `/api/scores` (`data/scores.json`).
+Open the URL shown in the terminal (usually http://localhost:5173). Dev also serves the shared leaderboard at `/api/scores` (`data/scores.json`). It keeps an all-time top 10 plus a top 10 per UTC month; `GET /api/scores?month=YYYY-MM` returns a past month's board.
 
 ## Build
 

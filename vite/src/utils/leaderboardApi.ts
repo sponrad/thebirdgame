@@ -21,12 +21,65 @@ type RunSession = {
 
 let activeRun: RunSession | null = null;
 
-async function parseScores(res: Response): Promise<ScoreEntry[]> {
-  const data = (await res.json()) as { scores?: unknown };
-  if (!res.ok || !Array.isArray(data.scores)) {
+export type LeaderboardData = {
+  allTime: ScoreEntry[];
+  /** Board for `monthKey` (UTC "YYYY-MM"). */
+  month: ScoreEntry[];
+  monthKey: string;
+  currentMonth: string;
+  /** Months with scores (always includes the current month), newest first. */
+  months: string[];
+};
+
+const MONTH_KEY_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+function monthKeyOf(ms: number): string {
+  const d = new Date(ms);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+/** "2026-08" → "August 2026". */
+export function formatMonthKey(key: string): string {
+  const [y, m] = key.split('-').map(Number);
+  return new Date(Date.UTC(y!, m! - 1, 1)).toLocaleString('en-US', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+function normalizeEntries(value: unknown): ScoreEntry[] {
+  if (!Array.isArray(value)) return [];
+  return value.map(normalizeEntry).filter((e): e is ScoreEntry => e !== null);
+}
+
+/** Tolerates older servers that only return `{ scores }` (all-time). */
+function parseLeaderboard(data: Record<string, unknown>): LeaderboardData {
+  if (!Array.isArray(data.scores)) {
     throw new Error('Leaderboard unavailable');
   }
-  return data.scores.map(normalizeEntry).filter((e): e is ScoreEntry => e !== null);
+  const currentMonth =
+    typeof data.currentMonth === 'string' && MONTH_KEY_RE.test(data.currentMonth)
+      ? data.currentMonth
+      : monthKeyOf(Date.now());
+  const monthRec =
+    data.month && typeof data.month === 'object' ? (data.month as Record<string, unknown>) : {};
+  const monthKey =
+    typeof monthRec.key === 'string' && MONTH_KEY_RE.test(monthRec.key) ? monthRec.key : currentMonth;
+  const listed = Array.isArray(data.months)
+    ? data.months.filter((k): k is string => typeof k === 'string' && MONTH_KEY_RE.test(k))
+    : [];
+  const months = [...new Set([currentMonth, monthKey, ...listed])].sort().reverse();
+  const allTime = normalizeEntries(data.scores);
+  const month = Array.isArray(monthRec.scores)
+    ? normalizeEntries(monthRec.scores)
+    : allTime.filter((e) => e.at > 0 && monthKeyOf(e.at) === monthKey);
+  return {
+    allTime,
+    month,
+    monthKey,
+    currentMonth,
+    months,
+  };
 }
 
 function normalizeEntry(value: unknown): ScoreEntry | null {
@@ -97,9 +150,13 @@ export function hasScoreRun(): boolean {
   return activeRun != null;
 }
 
-export async function fetchScores(): Promise<ScoreEntry[]> {
-  const res = await fetch(apiUrl('/api/scores'), { cache: 'no-store' });
-  return parseScores(res);
+/** Omit `month` for the current month. */
+export async function fetchLeaderboard(month?: string): Promise<LeaderboardData> {
+  const query = month ? `?month=${encodeURIComponent(month)}` : '';
+  const res = await fetch(apiUrl(`/api/scores${query}`), { cache: 'no-store' });
+  const data = (await res.json()) as Record<string, unknown>;
+  if (!res.ok) throw new Error('Leaderboard unavailable');
+  return parseLeaderboard(data);
 }
 
 export async function submitScore(
@@ -107,7 +164,7 @@ export async function submitScore(
   name: string,
   multiplier: number,
   achievements: readonly string[] = []
-): Promise<ScoreEntry[]> {
+): Promise<LeaderboardData> {
   const run = activeRun;
   if (!run) {
     throw new Error('No active run token');
@@ -134,21 +191,24 @@ export async function submitScore(
     }),
   });
 
-  const data = (await res.json()) as { scores?: unknown; added?: unknown; error?: unknown };
+  const data = (await res.json()) as Record<string, unknown>;
   if (!res.ok) {
     const err = typeof data.error === 'string' ? data.error : 'submit_failed';
     throw new Error(err);
   }
   // One submit per run token.
   activeRun = null;
-  if (!Array.isArray(data.scores)) {
-    throw new Error('Leaderboard unavailable');
-  }
-  return data.scores.map(normalizeEntry).filter((e): e is ScoreEntry => e !== null);
+  return parseLeaderboard(data);
 }
 
-export function qualifiesForLeaderboard(score: number, scores: ScoreEntry[], max = 10): boolean {
-  if (score <= 0) return false;
+function qualifiesForBoard(score: number, scores: ScoreEntry[], max: number): boolean {
   if (scores.length < max) return true;
   return score > scores[scores.length - 1]!.score;
+}
+
+/** True if the score would make either the all-time or the current month's board. */
+export function qualifiesForLeaderboard(score: number, board: LeaderboardData, max = 10): boolean {
+  if (score <= 0) return false;
+  const monthScores = board.monthKey === board.currentMonth ? board.month : [];
+  return qualifiesForBoard(score, board.allTime, max) || qualifiesForBoard(score, monthScores, max);
 }

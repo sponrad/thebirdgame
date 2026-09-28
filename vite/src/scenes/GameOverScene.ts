@@ -2,7 +2,7 @@ import { Container, Graphics, Text, TextStyle } from 'pixi.js';
 import type { Application } from 'pixi.js';
 import { earnedAchievements, Globals } from '../game/Globals';
 import { getLastName, setLastName, sanitizeName } from '../utils/storage';
-import { fetchScores, qualifiesForLeaderboard, submitScore, hasScoreRun } from '../utils/leaderboardApi';
+import { fetchLeaderboard, qualifiesForLeaderboard, submitScore, hasScoreRun } from '../utils/leaderboardApi';
 import { formatScore } from '../utils/format';
 import { ScoreSavePrompt } from '../ui/scoreSavePrompt';
 import { addButtonPressJuice } from '../game/Juice';
@@ -165,8 +165,8 @@ export class GameOverScene extends Container {
     void (async () => {
       let shouldPrompt = true;
       try {
-        const scores = await fetchScores();
-        shouldPrompt = qualifiesForLeaderboard(Globals.score, scores);
+        const board = await fetchLeaderboard();
+        shouldPrompt = qualifiesForLeaderboard(Globals.score, board);
       } catch {
         shouldPrompt = true;
       }
